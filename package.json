@@ -1,0 +1,31 @@
+{
+  "name": "persona-onboarding",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=26"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "dev": "node --env-file=.env --watch-path=server/src server/src/http/server.ts",
+    "dev:voice": "node server/scripts/dev-voice.ts",
+    "dev:client": "pnpm -C client dev",
+    "build:client": "pnpm -C client build",
+    "start": "node --env-file=.env server/src/http/server.ts",
+    "eval": "node --env-file=.env server/eval/run.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@hono/node-server": "^2.1.1",
+    "hono": "^4.13.9"
+  }
+}
