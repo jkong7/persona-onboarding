@@ -103,6 +103,13 @@ export class Driver {
     }
   }
 
+  async #spokenSoFar(callId: string): Promise<{ role: 'user' | 'assistant'; content: string }[]> {
+    const snapshot = await this.#snapshot();
+    return snapshot.transcript
+      .filter((entry) => entry.callId === callId && (entry.channel === 'voice' || entry.role === 'user'))
+      .map((entry) => ({ role: entry.role === 'agent' ? 'assistant' : 'user', content: entry.text }));
+  }
+
   async #collect(): Promise<void> {
     const snapshot = await this.#snapshot();
     for (const entry of snapshot.transcript) {
@@ -121,7 +128,7 @@ export class Driver {
       return;
     }
     const snapshot = await this.#snapshot();
-    if (snapshot.interface.activeCallId === null) {
+    if (snapshot.interface.activeCallId === null || snapshot.interface.hangupRequested) {
       const callId = this.#call.callId;
       this.#call = null;
       this.#say('event', 'system', 'the assistant ended the call');
@@ -148,7 +155,7 @@ export class Driver {
     const response = await this.#app.request(
       BRAIN_PATH,
       post(
-        { model: 'persona-brain', stream: true, messages: [{ role: 'user', content: text }] },
+        { model: 'persona-brain', stream: true, messages: [...(await this.#spokenSoFar(call.callId)), { role: 'user', content: text }] },
         { authorization: call.authorization },
       ),
     );

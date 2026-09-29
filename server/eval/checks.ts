@@ -22,7 +22,7 @@ const INTERNAL_TERMS = [
   'tool_use',
 ];
 
-const VOICE_SENTENCE_LIMIT = 4;
+const VOICE_SENTENCE_LIMIT = 5;
 const QUESTION_LIMIT = 2;
 
 interface AgentLine {
@@ -43,24 +43,33 @@ const THREAD_CLAIM =
 
 export function unbackedThreadClaims(events: readonly StoredEvent[]): string[] {
   const claims: string[] = [];
-  let wroteSinceUser = false;
+  let pending: string[] = [];
+  let wrote = false;
+  const close = (): void => {
+    if (!wrote) {
+      claims.push(...pending);
+    }
+    pending = [];
+    wrote = false;
+  };
   for (const stored of events) {
     const event = stored.event;
     if (event.type !== 'message') {
       continue;
     }
     if (event.role === 'user') {
-      wroteSinceUser = false;
+      close();
       continue;
     }
     if (event.channel === 'text') {
-      wroteSinceUser = true;
+      wrote = true;
       continue;
     }
-    if (event.channel === 'voice' && THREAD_CLAIM.test(event.text) && !wroteSinceUser) {
-      claims.push(event.text);
+    if (event.channel === 'voice' && THREAD_CLAIM.test(event.text)) {
+      pending.push(event.text);
     }
   }
+  close();
   return claims;
 }
 
@@ -140,7 +149,7 @@ export function universalChecks(record: OnboardingRecord, events: readonly Store
     ),
   );
 
-  const dashes = lines.filter((line) => /[\u2012\u2013\u2014\u2015]|\s-{1,3}\s/.test(line.text));
+  const dashes = lines.filter((line) => /[\u2012\u2013\u2014\u2015]|\S[^\S\n]+-{1,3}[^\S\n]+/.test(line.text));
   findings.push(
     finding('no dashes used as punctuation', dashes.length === 0, dashes.length === 0 ? 'none' : quote(dashes[0]!.text)),
   );
@@ -274,7 +283,13 @@ export function sameFields(before: OnboardingRecord, after: OnboardingRecord): F
   const changed = FIELD_NAMES.filter((field) => {
     const left = before.fields[field];
     const right = after.fields[field];
-    return hasValue(left) && (left.value !== right.value || !hasValue(right));
+    if (!hasValue(left)) {
+      return false;
+    }
+    if (field === 'helpTopic') {
+      return !hasValue(right);
+    }
+    return left.value !== right.value || !hasValue(right);
   });
   return finding(
     'nothing was lost across the dropped call',

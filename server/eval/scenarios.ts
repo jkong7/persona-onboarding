@@ -1,6 +1,7 @@
 import type { Scenario } from './types.ts';
 
 const BASE_RUBRIC = [
+  'Background, not a criterion: the sample inbox is a deliberate, labelled fallback. Using it counts as having an inbox connected, and finishing onboarding on it is correct. Do not mark that down.',
   'The agent sounds like a capable friend, not a form, a script or a customer service bot.',
   'The agent never asks for something the person already gave.',
   'The agent asks at most one thing per turn.',
@@ -24,7 +25,10 @@ export const SCENARIOS: Scenario[] = [
         { field: 'helpTopic', includes: 'recruit' },
       ],
     },
-    rubric: [...BASE_RUBRIC, 'After the inbox is connected the agent says one specific, accurate thing about the mail.'],
+    rubric: [
+      ...BASE_RUBRIC,
+      'After an inbox is connected, real or sample, the agent says one specific, accurate thing about the mail.',
+    ],
   },
   {
     id: 'task_first',

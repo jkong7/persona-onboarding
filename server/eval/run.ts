@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
 import { AnthropicModel, modelOptionsFromEnv } from '../src/agent/anthropicModel.ts';
 import { createApp } from '../src/http/app.ts';
+import { firstText } from '../src/http/firstText.ts';
+import { voiceThinking } from '../src/http/server.ts';
 import { TurnQueue } from '../src/http/turnQueue.ts';
 import { openDatabase } from '../src/store/database.ts';
 import { OnboardingService } from '../src/store/onboardingService.ts';
@@ -76,11 +78,21 @@ async function runOne(scenario: Scenario, run: number, options: Options, client:
     now,
     models: {
       text: metered(new AnthropicModel(text), text.model, meter),
-      voice: metered(new AnthropicModel({ ...text, model: voiceModel }), voiceModel, meter),
+      voice: metered(
+        new AnthropicModel({
+          ...text,
+          model: voiceModel,
+          thinking: voiceThinking(),
+        }),
+        voiceModel,
+        meter,
+      ),
     },
     voice: { ok: true, provider: stubVoice },
     tokens: new CallTokens(),
     turns,
+    realGmail: true,
+    firstText,
   });
   const driver = new Driver(app, service, clock, scenario, new SimulatedPerson(client, meter), turns);
   const base: ScenarioResult = {
