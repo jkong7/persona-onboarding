@@ -93,6 +93,7 @@ describe('creating and reading an onboarding', () => {
       gmailMode: null,
       ringing: false,
       activeCallId: null,
+      hangupRequested: false,
       mayOfferCall: true,
     });
     expect(snapshot.state.missing.map((entry) => entry.field)).toContain('helpTopic');
@@ -238,7 +239,7 @@ describe('sending a message', () => {
     expect(record.fields.gmail.value).toBeNull();
   });
 
-  it('runs concurrent messages to one onboarding one after another in arrival order', async () => {
+  it('keeps concurrent messages to one onboarding in arrival order and never runs two turns at once', async () => {
     const { service } = memoryService();
     let active = 0;
     let peak = 0;
@@ -275,11 +276,9 @@ describe('sending a message', () => {
     expect(peak).toBe(1);
     expect(service.transcript(id).map((entry) => [entry.role, entry.text])).toEqual([
       ['user', 'first'],
-      ['agent', 'reply 1'],
       ['user', 'second'],
-      ['agent', 'reply 2'],
       ['user', 'third'],
-      ['agent', 'reply 3'],
+      ['agent', 'reply 1'],
     ]);
 
     active = 0;
@@ -513,5 +512,95 @@ describe('the turn queue', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(queue.pending('a')).toBe(false);
+  });
+});
+
+describe('the first text', () => {
+  it('is sent without waiting for the model and counts as asking for a name', async () => {
+    const { app, service, model } = setup([], { firstText: () => 'Hi. What would you like to call me?' });
+    const created = (await (await app.request('/api/onboardings', { method: 'POST' })).json()) as { id: string };
+    const opened = await app.request(`/api/onboardings/${created.id}/open`, { method: 'POST' });
+    const body = (await opened.json()) as { opened: string; reply: { text: string } };
+    expect(body.opened).toBe('first_visit');
+    expect(body.reply.text).toBe('Hi. What would you like to call me?');
+    expect(model.requests).toHaveLength(0);
+    expect(service.get(created.id).fields.agentName.askCount).toBe(1);
+    expect(service.transcript(created.id).map((entry) => entry.text)).toEqual([
+      'Hi. What would you like to call me?',
+    ]);
+    const again = await app.request(`/api/onboardings/${created.id}/open`, { method: 'POST' });
+    expect(((await again.json()) as { opened: string }).opened).toBe('none');
+  });
+});
+
+describe('the inbox card', () => {
+  it('goes away when the person says no, and comes back if they ask for it', async () => {
+    const { app, service } = setup([]);
+    const id = service.create().id;
+    service.callTool(id, { name: 'offer_gmail_connect', input: { userRequested: false }, channel: 'text' });
+    const shown = (await (await app.request(`/api/onboardings/${id}`)).json()) as Snapshot;
+    expect(shown.interface.gmailButtonShown).toBe(true);
+
+    service.callTool(id, { name: 'defer_field', input: { field: 'gmail', kind: 'declined' }, channel: 'text' });
+    const hidden = (await (await app.request(`/api/onboardings/${id}`)).json()) as Snapshot;
+    expect(hidden.interface.gmailButtonShown).toBe(false);
+
+    service.callTool(id, { name: 'offer_gmail_connect', input: { userRequested: true }, channel: 'text' });
+    const back = (await (await app.request(`/api/onboardings/${id}`)).json()) as Snapshot;
+    expect(back.interface.gmailButtonShown).toBe(true);
+  });
+});
+
+describe('several texts sent in a row', () => {
+  it('get one reply that has seen all of them', async () => {
+    const { app, service, model } = setup([{ text: 'Got all three. Power bill first?' }]);
+    const id = service.create().id;
+    const path = `/api/onboardings/${id}/messages`;
+    const responses = await Promise.all([
+      app.request(path, post({ text: 'hey' })),
+      app.request(path, post({ text: 'i need help with bills' })),
+      app.request(path, post({ text: 'mostly power' })),
+    ]);
+    const bodies = await Promise.all(responses.map((response) => response.text()));
+    expect(bodies.filter((body) => body.includes('Got all three')).length).toBe(1);
+    expect(model.requests).toHaveLength(1);
+    expect(service.transcript(id).map((entry) => [entry.role, entry.text])).toEqual([
+      ['user', 'hey'],
+      ['user', 'i need help with bills'],
+      ['user', 'mostly power'],
+      ['agent', 'Got all three. Power bill first?'],
+    ]);
+    const sent = JSON.stringify(model.requests[0]!.messages);
+    expect(sent).toContain('hey');
+    expect(sent).toContain('i need help with bills');
+    expect(sent).toContain('mostly power');
+  });
+
+  it('still answers each message when they arrive one at a time', async () => {
+    const { app, service, model } = setup([{ text: 'Hello.' }, { text: 'Sure.' }]);
+    const id = service.create().id;
+    const path = `/api/onboardings/${id}/messages`;
+    await (await app.request(path, post({ text: 'hey' }))).text();
+    await (await app.request(path, post({ text: 'help me' }))).text();
+    expect(model.requests).toHaveLength(2);
+  });
+});
+
+describe('saying no to a call while it rings', () => {
+  it('stops the ringing without waiting for the decline button', async () => {
+    const { app, service } = setup([{ text: 'Texting is fine. Which gym is it?' }]);
+    const id = service.create().id;
+    service.callTool(id, { name: 'place_call', input: { userRequested: false }, channel: 'text' });
+    expect(service.get(id).calls.ringing).toBe(true);
+    await (await app.request(`/api/onboardings/${id}/messages`, post({ text: 'actually no calls, im on a train' }))).text();
+    expect(service.get(id).calls).toMatchObject({ ringing: false, declined: 1 });
+  });
+
+  it('keeps ringing when the message is about something else', async () => {
+    const { app, service } = setup([{ text: 'Pick up when you can.' }]);
+    const id = service.create().id;
+    service.callTool(id, { name: 'place_call', input: { userRequested: false }, channel: 'text' });
+    await (await app.request(`/api/onboardings/${id}/messages`, post({ text: 'i need to cancel my gym membership' }))).text();
+    expect(service.get(id).calls.ringing).toBe(true);
   });
 });

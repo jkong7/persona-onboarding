@@ -11,6 +11,7 @@ export interface InterfaceFlags {
   gmailMode: GmailMode | null;
   ringing: boolean;
   activeCallId: string | null;
+  hangupRequested: boolean;
   mayOfferCall: boolean;
 }
 
@@ -35,11 +36,13 @@ export function buildSnapshot(service: OnboardingService, id: string): Snapshot 
     state: service.describe(id),
     transcript: service.transcript(id),
     interface: {
-      gmailButtonShown: gmail.offered && gmail.mode !== 'real',
+      gmailButtonShown:
+        gmail.offered && gmail.mode !== 'real' && gmail.status !== 'deferred' && gmail.status !== 'declined',
       gmailConnected: hasValue(gmail),
       gmailMode: gmail.mode,
       ringing: record.calls.ringing,
       activeCallId: record.calls.activeCallId,
+      hangupRequested: record.calls.activeCallId !== null && record.calls.hangupIntent !== null,
       mayOfferCall: mayOfferCall(record),
     },
     lastSeq: events.at(-1)?.seq ?? 0,

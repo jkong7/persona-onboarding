@@ -1,15 +1,21 @@
 import { Hono, type Context } from 'hono';
 import { USER_TEXT_LIMIT } from '../agent/context.ts';
+import { refusesCall } from '../agent/cues.ts';
 import type { ModelClient } from '../agent/model.ts';
 import type { AgentChannel } from '../agent/toolSchemas.ts';
 import { runTurn, type Trigger, type TurnEnding, type UiSignal } from '../agent/turn.ts';
 import { hasValue } from '../domain/record.ts';
 import { isPlainObject } from '../domain/tools/input.ts';
 import type { InboxResolver } from '../agent/inboxTools.ts';
+import { GMAIL_SCOPE } from '../gmail/config.ts';
+import { GmailInbox } from '../gmail/gmailInbox.ts';
+import type { GoogleAccounts } from '../gmail/google.ts';
 import { SampleInbox } from '../inbox/provider.ts';
 import { OnboardingNotFoundError } from '../store/errors.ts';
 import type { OnboardingService } from '../store/onboardingService.ts';
+import type { OnboardingRecord } from '../domain/types.ts';
 import { CallTokens } from '../voice/callToken.ts';
+import type { Greeting } from '../voice/greeting.ts';
 import { registerCallRoutes, type AgentTurn, type VoiceAvailability } from './callRoutes.ts';
 import { decideOpening, type OpenDecision } from './opening.ts';
 import { Publisher } from './publisher.ts';
@@ -29,6 +35,11 @@ export interface AppOptions {
   voice?: VoiceAvailability;
   tokens?: CallTokens;
   inbox?: InboxResolver;
+  google?: GoogleAccounts | null;
+  realGmail?: boolean;
+  openingLine?: (record: OnboardingRecord) => Greeting | null;
+  firstText?: () => string;
+  reviewCalls?: boolean;
 }
 
 export interface Reply {
@@ -65,8 +76,18 @@ export function createApp(options: AppOptions): Hono {
   const turns = options.turns ?? new TurnQueue();
   const app = new Hono();
   const sampleInbox = new SampleInbox(now);
+  const google = options.google ?? null;
   const inbox: InboxResolver =
-    options.inbox ?? ((record) => (record.fields.gmail.mode === 'sample' ? sampleInbox : null));
+    options.inbox ??
+    ((record) => {
+      if (record.fields.gmail.mode === 'sample') {
+        return sampleInbox;
+      }
+      if (record.fields.gmail.mode === 'real' && google !== null) {
+        return new GmailInbox(() => google.accessToken(record.id), fetch, now);
+      }
+      return null;
+    });
 
   const notFound = (c: Context, id: string): Response =>
     c.json({ error: 'onboarding_not_found', onboardingId: id.slice(0, 64) }, 404);
@@ -88,13 +109,21 @@ export function createApp(options: AppOptions): Hono {
         ...(extras.callId === undefined ? {} : { callId: extras.callId }),
         ...(extras.inputChannel === undefined ? {} : { inputChannel: extras.inputChannel }),
         ...(extras.signal === undefined ? {} : { signal: extras.signal }),
+        ...(extras.silent === undefined ? {} : { silent: extras.silent }),
         ...(extras.onText === undefined ? {} : { onText: extras.onText }),
         onCommit: () => publisher.publish(id),
         inbox,
+        realGmail: options.realGmail ?? (options.google ?? null) !== null,
       });
       publisher.publish(id);
       const result = await running;
       publisher.publish(id);
+      if (process.env['VOICE_DEBUG'] === '1') {
+        const names = result.tools.map((trace) => `${trace.name}${trace.result.ok === true ? '' : '!'}`).join(',');
+        console.log(
+          `turn ${channel}: model ${result.firstTextMs === null ? 'none' : Math.round(result.firstTextMs)} ms, first word ${result.firstWordMs ?? 'none'} ms, total ${result.totalMs} ms, steps [${result.stepMs.join(', ')}], tools [${names}], in ${result.usage.inputTokens} cached ${result.usage.cacheReadTokens} written ${result.usage.cacheWriteTokens} out ${result.usage.outputTokens}`,
+        );
+      }
       return { text: result.text, ending: result.ending, signals: result.signals, spoken };
     } catch {
       publisher.publish(id);
@@ -114,7 +143,11 @@ export function createApp(options: AppOptions): Hono {
     voice: options.voice ?? { ok: false, reason: 'missing_deepgram_key' },
     agentTurn,
     now,
+    ...(options.openingLine === undefined ? {} : { openingLine: options.openingLine }),
+    ...(options.reviewCalls === undefined ? {} : { reviewCalls: options.reviewCalls }),
   });
+
+  const waitingTexts = new Map<string, number>();
 
   const triggerFor = (decision: OpenDecision): Trigger | null => {
     if (decision.type === 'first_visit') {
@@ -157,6 +190,15 @@ export function createApp(options: AppOptions): Hono {
     }
     const response = await turns.run(id, async (): Promise<ActionResponse & { opened: OpenDecision['type'] }> => {
       const decision = decideOpening(service.events(id), service.get(id), now());
+      if (decision.type === 'first_visit' && options.firstText !== undefined) {
+        const text = options.firstText();
+        service.logNote(id, 'first_visit', null);
+        service.logMessage(id, { role: 'agent', channel: 'text', text, callId: null });
+        service.callTool(id, { name: 'record_ask', input: { field: 'agentName' }, channel: 'text' });
+        publisher.publish(id);
+        const reply: Reply = { text, ending: 'completed', signals: [], spoken: false };
+        return { opened: decision.type, reply, snapshot: buildSnapshot(service, id) };
+      }
       const trigger = triggerFor(decision);
       const reply = trigger === null ? null : await textTurn(id, trigger);
       return { opened: decision.type, reply, snapshot: buildSnapshot(service, id) };
@@ -182,10 +224,30 @@ export function createApp(options: AppOptions): Hono {
       return c.json({ error: 'empty_text' }, 400);
     }
 
+    waitingTexts.set(id, (waitingTexts.get(id) ?? 0) + 1);
     const stream = sseStream({
       onOpen: (channel: SseChannel) => {
         void turns
           .run(id, async () => {
+            if (service.get(id).calls.ringing && refusesCall(text)) {
+              service.declineCall(id);
+              publisher.publish(id);
+            }
+            const behind = (waitingTexts.get(id) ?? 1) - 1;
+            if (behind > 0) {
+              waitingTexts.set(id, behind);
+              service.logMessage(id, { role: 'user', channel: 'text', text, callId: null });
+              publisher.publish(id);
+              channel.send('done', {
+                text: '',
+                ending: 'completed',
+                signals: [],
+                spoken: false,
+                snapshot: buildSnapshot(service, id),
+              });
+              return;
+            }
+            waitingTexts.delete(id);
             const reply = await textTurn(id, { type: 'user_message', text }, (delta) =>
               channel.send('delta', { text: delta }),
             );
@@ -253,6 +315,67 @@ export function createApp(options: AppOptions): Hono {
           ? await textTurn(id, { type: 'logged' })
           : await agentTurn(id, 'voice', { type: 'logged' }, { callId: activeCallId });
       return { applied: true, reason: null, reply, snapshot: buildSnapshot(service, id) };
+    });
+    return c.json(response);
+  });
+
+  app.get('/api/gmail/config', (c) =>
+    c.json({ enabled: google !== null, clientId: google?.clientId ?? null, scope: GMAIL_SCOPE }),
+  );
+
+  app.post('/api/onboardings/:id/gmail/exchange', async (c) => {
+    const id = c.req.param('id');
+    if (!exists(id)) {
+      return notFound(c, id);
+    }
+    if (google === null) {
+      return c.json({ error: 'gmail_unavailable' }, 409);
+    }
+    if ((c.req.header('x-requested-with') ?? '').toLowerCase() !== 'xmlhttprequest') {
+      return c.json({ error: 'missing_request_header' }, 400);
+    }
+    const body = await readJson(c);
+    const code = body.ok && isPlainObject(body.value) ? body.value['code'] : undefined;
+    if (typeof code !== 'string' || code.length === 0 || code.length > 2048) {
+      return c.json({ error: 'code_required' }, 400);
+    }
+    const accounts = google;
+    type ExchangeResponse = ActionResponse & { connected: boolean; reason: string | null };
+    const response = await turns.run(id, async (): Promise<ExchangeResponse> => {
+      const exchanged = await accounts.exchange(id, code);
+      if (exchanged.ok) {
+        service.applyGmail(id, { type: 'connected', mode: 'real', account: exchanged.tokens.account });
+      } else {
+        service.applyGmail(id, { type: 'failed', reason: exchanged.reason });
+      }
+      publisher.publish(id);
+      const activeCallId = service.get(id).calls.activeCallId;
+      const reply =
+        activeCallId === null
+          ? await textTurn(id, { type: 'logged' })
+          : await agentTurn(id, 'voice', { type: 'logged' }, { callId: activeCallId });
+      return {
+        connected: exchanged.ok,
+        reason: exchanged.ok ? null : exchanged.reason,
+        reply,
+        snapshot: buildSnapshot(service, id),
+      };
+    });
+    return c.json(response);
+  });
+
+  app.post('/api/onboardings/:id/gmail/disconnect', async (c) => {
+    const id = c.req.param('id');
+    if (!exists(id)) {
+      return notFound(c, id);
+    }
+    const response = await turns.run(id, async () => {
+      if (google !== null) {
+        await google.disconnect(id);
+      }
+      const committed = service.applyGmail(id, { type: 'disconnected' });
+      publisher.publish(id);
+      return { disconnected: committed.result.applied, snapshot: buildSnapshot(service, id) };
     });
     return c.json(response);
   });
