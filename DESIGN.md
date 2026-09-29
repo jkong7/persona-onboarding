@@ -1,6 +1,6 @@
 # Persona onboarding: design plan
 
-Status: draft for review. No code written yet.
+Status: built. Sections 4, 5 and 7 describe what was built and measured. How to run it: `README.md`.
 Research behind this plan: `reports/Persona onboarding design research.md`
 
 ## 1. What the reviewer is grading
@@ -37,9 +37,9 @@ Two consequences follow.
 
 ### Happy path
 
-1. **Thread opens.** The page looks like a message thread. The agent sends two short texts in Persona's voice and asks what the user wants to call it, offering "Persona" as the default.
+1. **Thread opens.** The page looks like a message thread. Two short texts appear at once, hand-written so there is no wait, and ask what the user wants to call the agent, offering "Persona" as the default.
 2. **Agent calls.** Once the name is settled or skipped, the agent says it will call, and an incoming call screen appears with accept and decline.
-3. **On the call.** The agent uses its new name, asks the user's name, and reads it back once. It asks what is on the user's plate. Captured values appear on screen as they are recorded.
+3. **On the call.** The agent uses its new name and asks the user's name. It greets them by that name, which is their chance to correct it, and asks what is on their plate in the same breath.
 4. **Gmail ask.** The agent explains the request using the user's own goal, says what will and will not happen, and warns that Google will show a caution screen because this is a demo app. A Connect Gmail button appears. The user clicks it, the popup opens, and the call stays live.
 5. **First value.** On connection the agent reads a handful of recent threads and says one specific, goal-relevant thing about them.
 6. **Graduation.** The agent says it is now in the user's messages and ends the call. The thread continues in main mode, starting on the user's task.
@@ -113,14 +113,17 @@ One module builds the instructions and the tool set for both channels. It takes 
 
 | Tool | Purpose | Server rule |
 |---|---|---|
-| `update_profile` | Record one or more fields from a single utterance | Validates length and content. Voice names start provisional until read back. |
+| `update_profile` | Record one or more fields from a single utterance | Validates length and content. A name first heard on a call is always provisional, whatever the model claims. |
 | `defer_field` | Record a refusal or "later" | Stops further asks for that field this session |
 | `record_ask` | Note that the reply asks for a field | Counts asks. Refuses a third ask and refuses fields already known. |
 | `offer_gmail_connect` | Show the Connect Gmail button | Never sets Gmail status |
 | `use_sample_inbox` | Switch to the sample inbox when the user asks for it | Can never replace or imitate a real account |
 | `place_call` | Ring the user from the text thread | Refused after two declines or two unplanned hangups, unless the user asked for the call |
 | `graduate` | Move to main mode | Allowed once a help topic exists or the user asks to skip. Returns what is still outstanding. |
-| `end_call` | End or pause the call | Records the reason |
+| `end_call` | End or pause the call | Refused until a goodbye has been spoken. The call ends only after the page confirms the goodbye was played. |
+| `send_text` | Put a draft, list or figures in the thread during a call | Only works during a call |
+| `wait_quietly` | Stay on the line and say nothing | Only works during a call |
+| `search_inbox`, `read_email` | Read the connected or sample inbox | Read only. Email content is marked as written by other people, never instructions. |
 
 A real Gmail connection is written only by the OAuth callback. The model cannot claim a connection that did not happen. The one thing it can do is switch the user to the sample inbox, which is labelled as sample everywhere.
 
@@ -133,6 +136,16 @@ A real Gmail connection is written only by the OAuth callback. The model cannot 
 | Tool list | Fixed for the length of a turn | Opus 5.5 rejects a request whose tools changed midway |
 | Prompt caching | The stable prompt is cached on its own | The per-turn state block changes every turn and would otherwise defeat the cache |
 | User text in the prompt | Wrapped and escaped | A user cannot forge a server event such as "Gmail connected" |
+| Thinking setting on calls | Left out of the request | Sending `thinking: disabled` made some requests take 2.5 s longer to start, depending on their content. Sending `adaptive` took 3 s. Leaving the setting out was about 1 s every time across six replayed requests. |
+| Strict tool schemas on calls | Off | Strict checking added 0.2 s to every spoken reply in the probe and about 1 s in live calls. The server validates every tool input itself, so nothing is lost. |
+| What reaches the speaker | Whole sentences, sent the moment each is complete | The voice service speaks at sentence ends. A reply that ended without trailing space sat unspoken until the whole turn finished, which cost 2 s on any turn with a lookup. |
+| Spoken length | Two sentences at once, four to five in a turn, the rest moved to the thread with one spoken pointer | The model's own sense of "short" is unreliable. A filter is not. |
+| Questions | One per spoken turn, and the turn ends at the question | Stops the agent asking and then carrying on talking |
+| Filler and internal wording | Dropped before speech: "Got it" after a lookup, narration of its own actions, words such as onboarding, names spelled letter by letter | Seen in live calls with the fast model |
+| Leaked markup | Tags and reasoning blocks are removed from every reply | Opus 5.5 sometimes wrapped a text in tags or wrote a line of reasoning in one |
+| Inbox preview | The newest twelve emails are placed in the prompt each turn once an inbox is connected | Most inbox questions are answered with no tool call, which removes a round trip |
+| Hints | Goodbye, call back, text instead and hold on are spotted in the person's words and passed to the model as a hint | The fast model missed a plain "bye" about one call in three |
+| First text and first spoken line | Hand-written, chosen at random from a few | No wait on page load or call connect, and no chance of a clumsy first impression |
 
 ### Voice transport
 
@@ -163,19 +176,28 @@ Turn-taking settings used:
 
 | Channel | Model | Why |
 |---|---|---|
-| Text thread | Claude Opus 5.5, low effort | Best wording in testing. A wait of 2 to 3 seconds is normal in a text thread. |
-| Calls | Claude Sonnet 5, low effort | About twice as fast to first words, which is what makes a call feel responsive |
+| Text thread | Claude Opus 5.5, low effort | Best wording in testing. A wait of a few seconds is normal in a text thread. |
+| Calls | Claude Haiku 4.5, falling back to Sonnet 5 if it is ever retired | Holds a steady reply gap at any time of day. Its weaker judgment is covered by the server-side guards below. |
 
-Both use the same prompt, tools and record.
+Both use the same tools and record. Calls have their own shorter prompt, written for speech.
 
-Measured time to first words, median over eight turns:
+Time to the model's first word on a call turn, same prompt and tools:
 
-| Model | Median | Note |
+| Model | First word | Note |
 |---|---|---|
-| Opus 5.5 | 2.6 s | Best wording |
-| Opus 5 | 1.9 s | |
-| Sonnet 5 | 1.3 s | Slightly chattier |
-| Haiku 4.5 | 0.9 s | Narrated its own tool use aloud. Ruled out. |
+| Sonnet 5 | about 0.95 s at night, 1.5 to 3 s on a weekday afternoon | Better judgment, fewer slips |
+| Haiku 4.5 | 0.5 to 0.9 s at any hour | Needs the speech filter, hints and guards to stay tidy |
+
+Measured over the same 16 live calls on the hosted copy, from the end of the person's speech to the first audio of the reply:
+
+| Call model | Median | What the transcripts showed |
+|---|---|---|
+| Sonnet 5, at night | 1.9 to 2.3 s | Flagged the scam email unprompted, left gaps in drafts, asked again when a name was misheard |
+| Sonnet 5, weekday afternoon | 2.8 s, with single replies of 5 to 6 s | Same judgment, but the wait is long enough to feel broken |
+| Haiku 4.5, weekday afternoon | 1.6 s, worst 3.0 s | Before the guards: invented interview times, promised reminders, switched on the sample inbox unasked. Each of those now has a server-side rule. |
+| Sonnet 5, thinking on | 4.3 s | Too slow for a call |
+
+Haiku 4.5 is the default. The first plan was Sonnet 5, and it is the better talker, but its start time doubled during the day and a reviewer will most likely call during the day. A steady 1.6 s with guarded judgment beats a better reply that arrives after 3 to 6 s of silence. `AGENT_VOICE_MODEL=claude-sonnet-5` switches back.
 
 ### Hangup handling
 
@@ -204,10 +226,12 @@ On the next call the agent skips the greeting and continues from the first missi
 
 ### Name accuracy
 
-- Read the name back once.
-- Ask for spelling only if the read-back is rejected.
-- Show the captured name on screen the moment it is recorded.
-- Accept a typed correction at any time.
+The first build read every name back and asked "did I get that right?". In live calls that cost a turn on every call and the model spelled names out letter by letter, which felt like a form. It was replaced with this:
+
+- The agent greets the person by the name it heard and carries straight on. Hearing it is their chance to correct it.
+- The name stays provisional until they have heard it and replied without objecting. The server settles it, not the model.
+- A name that does not look like a name (a single letter, a lowercase word, digits) is never used. The agent asks them to say it again, spell it or type it.
+- A correction, spoken, spelled or typed, replaces the name at once. Typed names are always trusted.
 
 ## 5. Gmail
 
@@ -244,31 +268,90 @@ The reviewer's Google address has to be on the test-user list before they try. T
 
 ## 7. Testing
 
-### Automated
+Four layers, from cheapest to most real.
 
-- 25 to 40 scenario files, each with a persona, scripted events and an expected end state.
-- A simulated user plays the persona. The harness injects hangups, reconnects, channel switches, duplicate sessions and OAuth outcomes.
-- Deterministic checks on the record:
-  - state before hangup equals state after reconnect
-  - the first turn after reconnect asks for nothing already known
-  - ask counts stay within budget
-  - at most one question per agent turn
-  - Gmail status is never set by the model
-  - no system prompt text appears in output
-- Each scenario runs three to five times. The reported number is the share of scenarios that pass every run.
+| Layer | Command | What it covers |
+|---|---|---|
+| Unit and route tests | `pnpm test`, `pnpm -C client test` | Record rules, tools, the speech filter, hints, name handling, call routes, reconnects, Gmail token handling, the page's state logic |
+| Simulated people, text | `pnpm eval` | 20 personas played by a model against the real agent, with injected hangups, declines, reconnects and Gmail outcomes. Deterministic checks on the record, plus a judge model reading the transcript against a rubric. |
+| Live calls | `pnpm eval:voice` | 16 scripted calls through the real voice service. Speech is synthesized and streamed into the call as microphone audio, so recognition, turn taking, interruption and playback are all real. |
+| Browser | by hand | First visit, decline, reload, second view of the same thread, phone width |
 
-### Manual voice checklist
+### The 16 live calls
 
-- Interrupting the agent mid-sentence
-- "Uh huh" while the agent is talking
-- Long pause while thinking
-- Background noise
-- Hangup mid-sentence, mid-tool-call and during the Google popup
-- Typing during the call
+Straightforward call. Interrupting twice. Hanging up while the agent speaks, then calling back. Hanging up mid-sentence. "Hold on" then silence. Total silence. A name the recogniser mangles, fixed by typing. A name fixed by spelling it aloud. Everything in one breath. Refusing a name and any inbox. Asking to switch to text. A noisy line. Off-topic questions and three attempts to hijack the agent. Changing name and goal partway. Refusing setup altogether. "I'm driving, call me back."
 
-### Limit
+Checks on every call: no failed turns, no fallback lines, spoken replies of five sentences or fewer, one question at most and nothing after it, no names spelled letter by letter, no dashes, and the saved record at the end.
 
-Simulated users are an imperfect proxy for real ones, so the write-up reports failures alongside passes.
+### Results
+
+Live calls against the hosted copy, Haiku 4.5 on calls (2026-09-28, weekday afternoon):
+
+| Measure | Result |
+|---|---|
+| Calls completed | 16 of 16 |
+| Checks failed | 0 |
+| End of speech to first reply audio, median across calls | 1.6 s |
+| Slowest single reply | 3.0 s |
+| First spoken line after the call connects | 0.4 to 0.9 s |
+
+Every call ended with the right values saved. Report: `eval-results/voice-2026-09-28T20-21-14-318Z/report.md`. Six further fixes were deployed after this run (see the last rows of the table below) and are covered by unit tests only, because the API credit ran out before they could be run live.
+
+Simulated people, text suite (2026-09-28), one run of each of the 20 scenarios:
+
+| Run | Passed | Notes |
+|---|---|---|
+| Full suite, first run | 14 of 20 | Sonnet 5 on calls |
+| The 6 failures, after fixes | 5 of 6 | |
+| Full suite, final call model | 12 of 20 | Haiku 4.5 on calls. Three failures were real and are fixed; the rerun could not happen because the API credit ran out. |
+
+What the six failures were:
+
+| Scenario | Cause | Outcome |
+|---|---|---|
+| cooperative, hangup_mid_call, typed_name_during_call | My own checks misfired: list hyphens inside a draft counted as dashes, a draft logged after the spoken line counted as missing, a reworded help topic counted as lost | Checks corrected |
+| hangup_mid_call | A draft sent during a call appeared in the thread before the line that announced it | Fixed: drafts are logged after the spoken line |
+| gmail_popup_closed | A second closed Google window went unmentioned | Fixed in the instructions |
+| prompt_injection, another_language | The judge misread a correct transcript | Passed on rerun |
+| cooperative | The judge objects that a sample inbox is marked as connected | Still fails. This is the design: the sample inbox is a real, labelled fallback. |
+
+The full suite has not been rerun since the last fixes. Reports are in `eval-results/`.
+
+### What testing changed
+
+Each of these was found by running calls, not by reading code.
+
+| Found | Fix |
+|---|---|
+| Every name was read back with a question, and spelled out letter by letter | Greet by name and carry on. The server settles the name once they have heard it and not objected. |
+| Replies after an inbox lookup were not spoken until the whole turn finished | Whole sentences are sent as soon as they are complete, each followed by a space |
+| "Got it. The rest is in the thread." with nothing of substance spoken | Filler and narration after a lookup are dropped, and one sentence of substance is always spoken |
+| The agent asked a question and kept talking | The spoken turn ends at the question |
+| "Let me move you into the main experience" | Internal wording never reaches the speaker |
+| A plain "bye" was missed about one call in three on the fast model | Goodbye, call back, text instead and hold on are passed to the model as hints |
+| "b" accepted as a name | A name that does not look like one is never used. The agent asks again. |
+| A text began with a stray tag, or a line of the model's reasoning | Tags and reasoning blocks are removed from every reply |
+| The agent offered real Gmail when no Google client was configured | A separate set of instructions offers only the sample inbox |
+| A hangup mid-answer used up one of the two allowed asks | An ask the person never got to answer is given back |
+| A draft written on a call contained invented interview times | Drafts leave a bracketed gap for anything the person has not said |
+| The local tunnel died mid-run | Two tunnels run at once and calls move to whichever answers |
+| The agent kept steering back to the inbox while the person talked about something else | Sentences about connecting are dropped on those turns, and the agent gets one chance to ask about what was said instead |
+| "There's a button on your screen" when no button had been shown | The button is shown whenever the agent mentions it |
+| Three texts sent quickly got three separate replies, one every five seconds | A burst of texts gets one reply that has read all of them |
+| "No calls, I'm on a train" typed while the phone was ringing, and it kept ringing | A typed refusal stops the ring and counts as a decline |
+| The agent called a silent caller by its own name | Its own name is removed when used to address the person |
+| A helpful conversation ran for nine turns and never left onboarding | Onboarding ends by itself after three replies on the person's task |
+| The sample inbox was switched on after an unrelated question | It is switched on only when the person's words are not a question or a refusal |
+| A request for the sample inbox in Spanish was refused by that same rule | The rule no longer depends on English words |
+| The agent pushed for the real account after the person chose the sample inbox | Sentences about connecting are dropped once the sample inbox is chosen |
+| A text-only conversation never asked the person's name | After three messages without a name, the agent is prompted to ask once |
+| With the model unreachable, the agent asked the person to repeat themselves forever | The second failure says plainly that the fault is on its side and that everything is saved |
+
+### Limits
+
+- Simulated people and scripted calls are a proxy. They do not mumble, laugh, or talk over the agent the way a person does.
+- Words cut off by a hangup mid-sentence are lost, because the voice service only reports speech once a turn is complete. The follow-up text asks again.
+- Real Gmail was connected once against Google on the hosted copy (2026-09-28): a closed Google window was handled, the second attempt connected, and the agent searched and read the real inbox and drafted a reply. Disconnect has only been tested against a stand-in for Google's token service.
 
 ## 8. To verify during the build
 
@@ -302,15 +385,13 @@ Settled:
 |---|---|
 | Anthropic API key | In place |
 | Deepgram API key | In place, Member role so the server can mint short-lived browser tokens |
-| Claude models | Opus 5.5 for text, Sonnet 5 for calls |
+| Claude models | Opus 5.5 for text. Calls: see Models above. |
+| Tunnel tool for local voice testing | cloudflared quick tunnel, started and watched by `pnpm dev:voice` |
 | Voice vendor | Deepgram Voice Agent |
 
 Still open:
 
 | Decision | Needed for |
 |---|---|
-| Tunnel tool for local voice testing | Step 5 |
-| Google Cloud OAuth client and test-user list | Step 7 |
 | First-hand notes on Persona's real onboarding | Tone and flow details in steps 2 and 5 |
-| How the reviewer will access it: hosted link or local run | Step 8 |
 | Deadline | Scope of step 6 |
