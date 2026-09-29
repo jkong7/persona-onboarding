@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
+  cancelHangup,
+  cancelRing,
   declineCall,
   endCall,
   startCall,
@@ -19,7 +21,8 @@ import { applyGmailTransition, type GmailTransition, type GmailTransitionResult 
 import { resolveHeard } from '../domain/heard.ts';
 import { createRecord } from '../domain/record.ts';
 import { runTool, type ToolResult } from '../domain/tools/index.ts';
-import type { CallEndReason, Channel, OnboardingRecord, Outcome } from '../domain/types.ts';
+import { refundAsk } from '../domain/tools/recordAsk.ts';
+import type { CallEndReason, Channel, FieldName, OnboardingRecord, Outcome } from '../domain/types.ts';
 import { inTransaction, type Database } from './database.ts';
 import { EventLog } from './eventLog.ts';
 import { EventTargetError, VersionConflictError } from './errors.ts';
@@ -157,15 +160,6 @@ export class OnboardingService {
         if (result.tool === 'place_call' && result.ok === true) {
           events.push({ type: 'call_offered', userRequested: result.userRequested });
         }
-        if (result.tool === 'end_call' && result.ok === true && 'callId' in result && result.callId !== null) {
-          events.push({
-            type: 'call_ended',
-            callId: result.callId,
-            reason: 'agent_ended',
-            unplanned: false,
-            callbackRequested: result.callbackRequested,
-          });
-        }
         return events;
       },
       now,
@@ -228,6 +222,31 @@ export class OnboardingService {
       },
       now,
     );
+  }
+
+  refundAsk(id: string, field: FieldName, options: WriteOptions = {}): Committed<{ refunded: boolean }> {
+    const now = this.#clock();
+    return this.#commit(
+      id,
+      'system',
+      options,
+      (record) => refundAsk(record, field, now),
+      (outcome) =>
+        outcome.result.refunded
+          ? [{ type: 'note', kind: 'ask_unanswered', detail: `The call ended before they could answer about ${field}.` }]
+          : [],
+      now,
+    );
+  }
+
+  cancelHangup(id: string, options: WriteOptions = {}): Committed<{ cancelled: boolean }> {
+    const now = this.#clock();
+    return this.#commit(id, 'system', options, (record) => cancelHangup(record, now), () => [], now);
+  }
+
+  cancelRing(id: string, options: WriteOptions = {}): Committed<{ cancelled: boolean }> {
+    const now = this.#clock();
+    return this.#commit(id, 'system', options, (record) => cancelRing(record, now), () => [], now);
   }
 
   declineCall(id: string, options: WriteOptions = {}): Committed<DeclineResult> {
@@ -329,6 +348,17 @@ export class OnboardingService {
         },
         now,
       );
+    });
+  }
+
+  supersedeMessage(id: string, messageSeq: number): StoredEvent {
+    const now = this.#clock();
+    return inTransaction(this.#db, () => {
+      const target = this.#events.find(id, messageSeq);
+      if (target === null || target.event.type !== 'message') {
+        throw new EventTargetError(`event ${messageSeq} is not a message of ${id}`);
+      }
+      return this.#events.append(id, { type: 'message_superseded', messageSeq }, now);
     });
   }
 
