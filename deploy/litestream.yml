@@ -1,0 +1,7 @@
+dbs:
+  - path: ${DATABASE_PATH}
+    replicas:
+      - type: gcs
+        bucket: ${LITESTREAM_BUCKET}
+        path: onboarding
+        sync-interval: 1s

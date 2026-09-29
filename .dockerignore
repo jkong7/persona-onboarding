@@ -1,0 +1,11 @@
+node_modules
+client/node_modules
+client/dist
+data
+eval-results
+reports
+research_notes
+.env
+.env.*
+*.md
+.DS_Store
