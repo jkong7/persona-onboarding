@@ -17,6 +17,11 @@ export interface MessageHeardEvent {
   heard: string;
 }
 
+export interface MessageSupersededEvent {
+  type: 'message_superseded';
+  messageSeq: number;
+}
+
 export interface ToolCallEvent {
   type: 'tool_call';
   name: string;
@@ -71,6 +76,7 @@ export interface OAuthEvent {
 export type OnboardingEvent =
   | MessageEvent
   | MessageHeardEvent
+  | MessageSupersededEvent
   | ToolCallEvent
   | CallStartedEvent
   | CallEndedEvent
@@ -99,8 +105,19 @@ export interface TranscriptEntry {
   createdAt: string;
 }
 
+export function supersededSeqs(events: readonly StoredEvent[]): Set<number> {
+  const seqs = new Set<number>();
+  for (const stored of events) {
+    if (stored.event.type === 'message_superseded') {
+      seqs.add(stored.event.messageSeq);
+    }
+  }
+  return seqs;
+}
+
 export function buildTranscript(events: readonly StoredEvent[]): TranscriptEntry[] {
   const heardBySeq = new Map<number, string>();
+  const superseded = supersededSeqs(events);
   for (const stored of events) {
     if (stored.event.type === 'message_heard') {
       heardBySeq.set(stored.event.messageSeq, stored.event.heard);
@@ -108,7 +125,7 @@ export function buildTranscript(events: readonly StoredEvent[]): TranscriptEntry
   }
   const entries: TranscriptEntry[] = [];
   for (const stored of events) {
-    if (stored.event.type !== 'message') {
+    if (stored.event.type !== 'message' || superseded.has(stored.seq)) {
       continue;
     }
     const message = stored.event;

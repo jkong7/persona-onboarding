@@ -14,6 +14,8 @@ export type GmailFailureReason =
   | 'scope_missing'
   | 'exchange_failed';
 
+export type HangupIntent = 'completed' | 'callback_later' | 'switch_to_text';
+
 export type CallEndReason =
   | 'user_hangup'
   | 'tab_closed'
@@ -55,6 +57,7 @@ export interface CallBookkeeping {
   unplannedHangups: number;
   declined: number;
   ringing: boolean;
+  hangupIntent: HangupIntent | null;
   activeCallId: string | null;
   lastEndReason: CallEndReason | null;
   callbackRequested: boolean;

@@ -33,6 +33,7 @@ export function createRecord(id: string, now: string): OnboardingRecord {
       unplannedHangups: 0,
       declined: 0,
       ringing: false,
+      hangupIntent: null,
       activeCallId: null,
       lastEndReason: null,
       callbackRequested: false,

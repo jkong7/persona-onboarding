@@ -34,13 +34,21 @@ describe('describeState', () => {
     const state = describeState(asked.record);
 
     expect(state.known).toEqual([
-      { field: 'userName', value: 'Siobhan', status: 'provisional', source: 'voice', needsReadBack: true },
+      {
+        field: 'userName',
+        value: 'Siobhan',
+        status: 'provisional',
+        source: 'voice',
+        needsReadBack: true,
+        possiblyMisheard: false,
+      },
       {
         field: 'helpTopic',
         value: 'cancel my gym membership',
         status: 'confirmed',
         source: 'voice',
         needsReadBack: false,
+        possiblyMisheard: false,
       },
     ]);
     expect(state.missing).toEqual([
@@ -97,6 +105,7 @@ describe('describeState', () => {
       total: 2,
       unplannedHangups: 2,
       active: false,
+      endingCall: false,
       ringing: false,
       declined: 0,
       mayOfferCall: false,
@@ -125,7 +134,7 @@ describe('describeState', () => {
       [
         'phase: onboarding',
         'known:',
-        '- userName = "Siobhan" (provisional, read back once to confirm)',
+        '- userName = "Siobhan" (heard on a call, use it once so they can correct it)',
         '- helpTopic = "cancel my gym membership" (confirmed)',
         'missing:',
         '- gmail: blocks only tasks that need email; fallback "sample inbox"; asks left 2',

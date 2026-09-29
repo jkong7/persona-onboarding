@@ -84,6 +84,7 @@ describe('event log', () => {
     service.endCall(id, { callId: 'call_1', reason: 'network_drop' });
     service.startCall(id, 'call_2');
     service.callTool(id, { name: 'end_call', input: { intent: 'callback_later' }, channel: 'voice' });
+    service.endCall(id, { callId: 'call_2', reason: 'agent_ended' });
 
     const ended = service
       .events(id)

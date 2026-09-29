@@ -313,3 +313,81 @@ describe('update_profile', () => {
     }
   });
 });
+
+describe('update_profile with a value and a confirmed flag', () => {
+  it('records an unchecked name heard on a call as provisional', () => {
+    const outcome = updateProfile(
+      freshRecord(),
+      { updates: [{ field: 'userName', value: 'Jonathan', confirmed: false }] },
+      ctx('voice'),
+    );
+    expect(outcome.record.fields.userName).toMatchObject({ value: 'Jonathan', status: 'provisional' });
+  });
+
+  it('confirms a name when it is passed again with confirmed true', () => {
+    const heard = updateProfile(
+      freshRecord(),
+      { updates: [{ field: 'userName', value: 'Jonathan', confirmed: false }] },
+      ctx('voice'),
+    );
+    const agreed = updateProfile(
+      heard.record,
+      { updates: [{ field: 'userName', value: 'Jonathan', confirmed: true }] },
+      ctx('voice'),
+    );
+    expect(agreed.record.fields.userName).toMatchObject({ value: 'Jonathan', status: 'confirmed' });
+    expect(agreed.record.fields.userName.history).toEqual([]);
+  });
+
+  it('keeps a name heard for the first time provisional until the person has heard it', () => {
+    const outcome = updateProfile(
+      freshRecord(),
+      { updates: [{ field: 'userName', value: 'Jonathan', confirmed: true }] },
+      ctx('voice'),
+    );
+    expect(outcome.result.ok).toBe(true);
+    expect(outcome.record.fields.userName).toMatchObject({ value: 'Jonathan', status: 'provisional' });
+    const typed = updateProfile(
+      freshRecord(),
+      { updates: [{ field: 'userName', value: 'Jonathan', confirmed: true }] },
+      ctx('text'),
+    );
+    expect(typed.record.fields.userName).toMatchObject({ value: 'Jonathan', status: 'confirmed' });
+  });
+
+  it('treats a different value as a correction', () => {
+    const first = updateProfile(
+      freshRecord(),
+      { updates: [{ field: 'userName', value: 'Shavon', confirmed: false }] },
+      ctx('voice'),
+    );
+    const second = updateProfile(
+      first.record,
+      { updates: [{ field: 'userName', value: 'Siobhan', confirmed: true }] },
+      ctx('voice'),
+    );
+    expect(second.record.fields.userName).toMatchObject({ value: 'Siobhan', status: 'confirmed' });
+    expect(second.record.fields.userName.history.map((entry) => entry.value)).toEqual(['Shavon']);
+  });
+
+  it('erases a value when passed null, and still refuses gmail', () => {
+    const set = updateProfile(
+      freshRecord(),
+      { updates: [{ field: 'helpTopic', value: 'taxes', confirmed: true }] },
+      ctx('text'),
+    );
+    const cleared = updateProfile(
+      set.record,
+      { updates: [{ field: 'helpTopic', value: null, confirmed: false }] },
+      ctx('text'),
+    );
+    expect(cleared.record.fields.helpTopic).toMatchObject({ value: null, status: 'empty' });
+    const gmail = updateProfile(
+      freshRecord(),
+      { updates: [{ field: 'gmail', value: 'a@b.com', confirmed: true }] },
+      ctx('text'),
+    );
+    expect(gmail.result.rejected[0]?.reason).toBe('gmail_is_set_by_google_only');
+    expect(gmail.record.fields.gmail.value).toBeNull();
+  });
+});

@@ -1,5 +1,5 @@
 import { CALL_DECLINE_LIMIT, UNPLANNED_END_REASONS, UNPLANNED_HANGUP_LIMIT } from './fields.ts';
-import type { CallEndReason, OnboardingRecord, Outcome } from './types.ts';
+import type { CallEndReason, HangupIntent, OnboardingRecord, Outcome } from './types.ts';
 
 export interface StartCallResult {
   started: boolean;
@@ -53,6 +53,49 @@ export function ringCall(record: OnboardingRecord, userRequested: boolean, now: 
   return { record: next, changed: true, result: { ringing: true, reason: null } };
 }
 
+export function cancelRing(record: OnboardingRecord, now: string): Outcome<{ cancelled: boolean }> {
+  if (!record.calls.ringing) {
+    return { record, changed: false, result: { cancelled: false } };
+  }
+  return {
+    record: { ...record, calls: { ...record.calls, ringing: false }, updatedAt: now },
+    changed: true,
+    result: { cancelled: true },
+  };
+}
+
+export interface HangupRequest {
+  requested: boolean;
+  callId: string | null;
+  intent: HangupIntent | null;
+}
+
+export function requestHangup(record: OnboardingRecord, intent: HangupIntent, now: string): Outcome<HangupRequest> {
+  const callId = record.calls.activeCallId;
+  if (callId === null) {
+    return { record, changed: false, result: { requested: false, callId: null, intent: null } };
+  }
+  if (record.calls.hangupIntent === intent) {
+    return { record, changed: false, result: { requested: true, callId, intent } };
+  }
+  return {
+    record: { ...record, calls: { ...record.calls, hangupIntent: intent }, updatedAt: now },
+    changed: true,
+    result: { requested: true, callId, intent },
+  };
+}
+
+export function cancelHangup(record: OnboardingRecord, now: string): Outcome<{ cancelled: boolean }> {
+  if (record.calls.hangupIntent === null) {
+    return { record, changed: false, result: { cancelled: false } };
+  }
+  return {
+    record: { ...record, calls: { ...record.calls, hangupIntent: null }, updatedAt: now },
+    changed: true,
+    result: { cancelled: true },
+  };
+}
+
 export interface DeclineResult {
   declined: boolean;
   declinedCount: number;
@@ -96,6 +139,7 @@ export function startCall(record: OnboardingRecord, callId: string, now: string)
       total: record.calls.total + 1,
       unplannedHangups: record.calls.unplannedHangups + (superseded ? 1 : 0),
       ringing: false,
+      hangupIntent: null,
       activeCallId: callId,
       lastEndReason: superseded ? 'network_drop' : record.calls.lastEndReason,
       callbackRequested: false,
@@ -133,13 +177,16 @@ export function endCall(record: OnboardingRecord, input: EndCallInput, now: stri
     };
   }
   const unplanned = isUnplanned(input.reason);
-  const callbackRequested = input.callbackRequested === true;
+  const callbackRequested =
+    input.callbackRequested === true ||
+    (input.reason === 'agent_ended' && record.calls.hangupIntent === 'callback_later');
   const next: OnboardingRecord = {
     ...record,
     calls: {
       ...record.calls,
       unplannedHangups: record.calls.unplannedHangups + (unplanned ? 1 : 0),
       activeCallId: null,
+      hangupIntent: null,
       lastEndReason: input.reason,
       callbackRequested,
     },

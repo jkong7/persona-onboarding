@@ -1,5 +1,6 @@
 import { FIELD_LIMITS, isNameField, isProfileFieldName } from '../fields.ts';
 import { historyWithCurrent, withField } from '../record.ts';
+import { looksMisheard } from '../names.ts';
 import { sanitizeValue } from '../sanitize.ts';
 import type {
   Channel,
@@ -32,6 +33,7 @@ export interface UpdateEntryResult {
   value: string | null;
   status: FieldStatus | null;
   needsReadBack: boolean;
+  possiblyMisheard: boolean;
   truncated: boolean;
   replacedConfirmed: boolean;
   reason: UpdateRejection | null;
@@ -60,6 +62,7 @@ function reject(record: OnboardingRecord, field: string | null, op: string, reas
       value: null,
       status: null,
       needsReadBack: false,
+      possiblyMisheard: false,
       truncated: false,
       replacedConfirmed: false,
       reason,
@@ -84,6 +87,11 @@ function accept(
       value: state.value,
       status: state.status,
       needsReadBack: state.status === 'provisional',
+      possiblyMisheard:
+        field === 'userName' &&
+        state.status === 'provisional' &&
+        state.value !== null &&
+        looksMisheard(state.value),
       truncated: extras.truncated ?? false,
       replacedConfirmed: extras.replacedConfirmed ?? false,
       reason: null,
@@ -101,14 +109,32 @@ function statusFor(field: ProfileFieldName, channel: Channel): FieldStatus {
   return isNameField(field) ? 'provisional' : 'confirmed';
 }
 
-function applySet(record: OnboardingRecord, field: ProfileFieldName, raw: unknown, ctx: ToolContext): Step {
+function capitalised(name: string): string {
+  if (name !== name.toLowerCase() || !/^\p{L}[\p{L}\s'’-]*$/u.test(name)) {
+    return name;
+  }
+  return name.replace(/(^|[\s-])(\p{Ll})/gu, (_match, lead: string, letter: string) => `${lead}${letter.toUpperCase()}`);
+}
+
+function applySet(
+  record: OnboardingRecord,
+  field: ProfileFieldName,
+  raw: unknown,
+  ctx: ToolContext,
+  confirmed = false,
+): Step {
   const clean = sanitizeValue(raw, FIELD_LIMITS[field]);
   if (!clean.ok) {
     return reject(record, field, 'set', clean.reason);
   }
   const current = record.fields[field];
-  const incoming = statusFor(field, ctx.channel);
-  if (current.value === clean.value) {
+  const typedName = ctx.channel === 'text' && isNameField(field);
+  const value = typedName ? capitalised(clean.value) : clean.value;
+  const heard = ctx.channel === 'voice' && isNameField(field);
+  const firstHeard = heard && current.value === null;
+  const doubtful = heard && field === 'userName' && looksMisheard(clean.value) && current.value !== value;
+  const incoming = confirmed && !firstHeard && !doubtful ? 'confirmed' : statusFor(field, ctx.channel);
+  if (current.value === value) {
     if (current.status === 'provisional' && incoming === 'confirmed') {
       const confirmed: FieldState = { ...current, status: 'confirmed', source: ctx.channel };
       return accept(withField(record, field, confirmed, ctx.now), field, 'set', 'confirmed', {
@@ -119,7 +145,7 @@ function applySet(record: OnboardingRecord, field: ProfileFieldName, raw: unknow
   }
   const next: FieldState = {
     ...current,
-    value: clean.value,
+    value,
     status: incoming,
     source: ctx.channel,
     history: historyWithCurrent(current, ctx.now),
@@ -174,6 +200,20 @@ function applyOne(record: OnboardingRecord, update: unknown, ctx: ToolContext): 
     return reject(record, null, 'unknown', 'invalid_update');
   }
   const field = update['field'];
+  if (update['op'] === undefined && typeof update['confirmed'] === 'boolean') {
+    const label = typeof field === 'string' ? field.slice(0, 64) : null;
+    if (field === 'gmail') {
+      return reject(record, 'gmail', 'set', 'gmail_is_set_by_google_only');
+    }
+    if (!isProfileFieldName(field)) {
+      return reject(record, label, 'set', 'unknown_field');
+    }
+    const value = update['value'];
+    if (value === null || (typeof value === 'string' && value.trim().length === 0)) {
+      return applyClear(record, field, ctx);
+    }
+    return applySet(record, field, value, ctx, update['confirmed']);
+  }
   const op = update['op'] === undefined ? 'set' : update['op'];
   const fieldLabel = typeof field === 'string' ? field.slice(0, 64) : null;
   const opLabel = typeof op === 'string' ? op.slice(0, 32) : 'unknown';

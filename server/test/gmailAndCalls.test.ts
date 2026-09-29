@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { endCall, mayOfferCall, startCall } from '../src/domain/calls.ts';
+import { cancelHangup, endCall, mayOfferCall, startCall } from '../src/domain/calls.ts';
 import { applyGmailTransition } from '../src/domain/gmail.ts';
 import { endCallTool } from '../src/domain/tools/endCall.ts';
 import { runTool, TOOL_NAMES } from '../src/domain/tools/index.ts';
@@ -209,17 +209,36 @@ describe('call bookkeeping', () => {
     expect(mayOfferCall(record)).toBe(false);
   });
 
-  it('ends the active call from the end_call tool and records a callback request', () => {
+  it('asks for the call to end without ending it, and records a callback request once it does', () => {
     const started = startCall(freshRecord(), 'call_1', T1);
-    const ended = endCallTool(started.record, { intent: 'callback_later' }, ctx('voice', T2));
+    const asked = endCallTool(started.record, { intent: 'callback_later' }, ctx('voice', T2));
 
-    expect(ended.result).toMatchObject({ ok: true, intent: 'callback_later', callId: 'call_1', callbackRequested: true });
+    expect(asked.result).toMatchObject({ ok: true, intent: 'callback_later', callId: 'call_1', callbackRequested: true });
+    expect(asked.record.calls).toMatchObject({ activeCallId: 'call_1', hangupIntent: 'callback_later' });
+
+    const ended = endCall(asked.record, { callId: 'call_1', reason: 'agent_ended' }, T2);
     expect(ended.record.calls).toMatchObject({
       activeCallId: null,
+      hangupIntent: null,
       lastEndReason: 'agent_ended',
       unplannedHangups: 0,
       callbackRequested: true,
     });
+  });
+
+  it('can take back a request to end the call', () => {
+    const started = startCall(freshRecord(), 'call_1', T1);
+    const asked = endCallTool(started.record, { intent: 'completed' }, ctx('voice', T2));
+    const kept = cancelHangup(asked.record, T2);
+    expect(kept.record.calls).toMatchObject({ activeCallId: 'call_1', hangupIntent: null });
+    expect(cancelHangup(kept.record, T2).changed).toBe(false);
+  });
+
+  it('forgets a request to end the call when the person hangs up first', () => {
+    const started = startCall(freshRecord(), 'call_1', T1);
+    const asked = endCallTool(started.record, { intent: 'callback_later' }, ctx('voice', T2));
+    const ended = endCall(asked.record, { callId: 'call_1', reason: 'user_hangup' }, T2);
+    expect(ended.record.calls).toMatchObject({ hangupIntent: null, callbackRequested: false, unplannedHangups: 1 });
   });
 
   it('reports no active call when end_call is used outside a call', () => {

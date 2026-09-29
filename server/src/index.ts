@@ -8,7 +8,16 @@ export { describeState } from './domain/describe.ts';
 export type { StateDescription, KnownField, MissingField } from './domain/describe.ts';
 export { applyGmailTransition } from './domain/gmail.ts';
 export type { GmailTransition, GmailTransitionResult } from './domain/gmail.ts';
-export { startCall, endCall, ringCall, declineCall, mayOfferCall, isUnplanned } from './domain/calls.ts';
+export {
+  startCall,
+  endCall,
+  ringCall,
+  declineCall,
+  requestHangup,
+  cancelHangup,
+  mayOfferCall,
+  isUnplanned,
+} from './domain/calls.ts';
 export { resolveHeard, truncateToFraction } from './domain/heard.ts';
 export * from './domain/tools/index.ts';
 export { openDatabase, inTransaction } from './store/database.ts';

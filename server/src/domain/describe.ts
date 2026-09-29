@@ -1,5 +1,6 @@
 import { mayOfferCall } from './calls.ts';
 import { ASK_PRIORITY, FIELD_META, FIELD_NAMES } from './fields.ts';
+import { looksMisheard } from './names.ts';
 import { asksRemaining, hasValue } from './record.ts';
 import { askBlockedBy, type AskRejection } from './tools/recordAsk.ts';
 import { graduationGrant } from './tools/graduate.ts';
@@ -20,6 +21,7 @@ export interface KnownField {
   status: FieldStatus;
   source: Channel | null;
   needsReadBack: boolean;
+  possiblyMisheard: boolean;
 }
 
 export interface MissingField {
@@ -44,6 +46,7 @@ export interface CallSummary {
   total: number;
   unplannedHangups: number;
   active: boolean;
+  endingCall: boolean;
   ringing: boolean;
   declined: number;
   mayOfferCall: boolean;
@@ -79,6 +82,8 @@ function knownFields(record: OnboardingRecord): KnownField[] {
         status: state.status,
         source: state.source,
         needsReadBack: state.status === 'provisional',
+        possiblyMisheard:
+          field === 'userName' && state.status === 'provisional' && looksMisheard(state.value),
       });
     }
   }
@@ -108,7 +113,11 @@ function missingFields(record: OnboardingRecord): MissingField[] {
 }
 
 function renderKnown(entry: KnownField): string {
-  const note = entry.needsReadBack ? 'provisional, read back once to confirm' : entry.status;
+  const note = entry.possiblyMisheard
+    ? 'heard on a call and probably misheard, ask them to say it again or spell it'
+    : entry.needsReadBack
+      ? 'heard on a call, use it once so they can correct it'
+      : entry.status;
   return `- ${entry.field} = ${JSON.stringify(entry.value)} (${note})`;
 }
 
@@ -126,7 +135,7 @@ function renderGmail(gmail: GmailSummary): string {
   }
   const parts = ['gmail: not connected'];
   if (gmail.offered) {
-    parts.push('connect button already shown');
+    parts.push('you have already offered it and the connect button is on their screen, so do not bring it up again unless they do');
   }
   if (gmail.failureReason !== null) {
     parts.push(`last attempt ${gmail.failureReason}`);
@@ -136,7 +145,15 @@ function renderGmail(gmail: GmailSummary): string {
 
 function renderCalls(calls: CallSummary): string {
   const parts = [`calls: ${calls.total} total`, `${calls.unplannedHangups} unplanned hangups`];
-  parts.push(calls.active ? 'call in progress' : calls.ringing ? 'ringing, not answered yet' : 'no call in progress');
+  parts.push(
+    calls.active
+      ? calls.endingCall
+        ? 'call in progress, you have said goodbye and it is about to end'
+        : 'call in progress'
+      : calls.ringing
+        ? 'ringing, not answered yet'
+        : 'no call in progress',
+  );
   if (calls.declined > 0) {
     parts.push(`${calls.declined} declined`);
   }
@@ -189,6 +206,7 @@ export function describeState(record: OnboardingRecord, options: DescribeOptions
       total: record.calls.total,
       unplannedHangups: record.calls.unplannedHangups,
       active: record.calls.activeCallId !== null,
+      endingCall: record.calls.hangupIntent !== null,
       ringing: record.calls.ringing,
       declined: record.calls.declined,
       mayOfferCall: mayOfferCall(record),

@@ -1,8 +1,8 @@
-import { endCall } from '../calls.ts';
-import type { OnboardingRecord, Outcome, ToolContext } from '../types.ts';
+import { requestHangup } from '../calls.ts';
+import type { HangupIntent, OnboardingRecord, Outcome, ToolContext } from '../types.ts';
 import { isPlainObject } from './input.ts';
 
-export type EndCallIntent = 'completed' | 'callback_later' | 'switch_to_text';
+export type EndCallIntent = HangupIntent;
 
 export interface EndCallResult {
   tool: 'end_call';
@@ -23,21 +23,17 @@ function parseIntent(input: unknown): EndCallIntent {
 
 export function endCallTool(record: OnboardingRecord, input: unknown, ctx: ToolContext): Outcome<EndCallResult> {
   const intent = parseIntent(input);
-  const outcome = endCall(
-    record,
-    { callId: null, reason: 'agent_ended', callbackRequested: intent === 'callback_later' },
-    ctx.now,
-  );
+  const outcome = requestHangup(record, intent, ctx.now);
   return {
     record: outcome.record,
     changed: outcome.changed,
     result: {
       tool: 'end_call',
-      ok: outcome.result.ended,
+      ok: outcome.result.requested,
       intent,
       callId: outcome.result.callId,
-      callbackRequested: outcome.result.callbackRequested,
-      reason: outcome.result.ended ? null : 'no_active_call',
+      callbackRequested: intent === 'callback_later',
+      reason: outcome.result.requested ? null : 'no_active_call',
     },
   };
 }
