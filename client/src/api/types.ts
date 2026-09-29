@@ -84,6 +84,7 @@ export interface InterfaceFlags {
   gmailMode: GmailMode | null;
   ringing: boolean;
   activeCallId: string | null;
+  hangupRequested: boolean;
   mayOfferCall: boolean;
 }
 
@@ -123,6 +124,21 @@ export interface OpenResponse extends ActionResponse {
 
 export interface DeclineResponse extends ActionResponse {
   declined: boolean;
+}
+
+export interface GmailConfig {
+  enabled: boolean;
+  clientId: string | null;
+  scope: string;
+}
+
+export interface ExchangeResponse extends ActionResponse {
+  connected: boolean;
+  reason: string | null;
+}
+
+export interface OutcomeResponse extends ActionResponse {
+  applied: boolean;
 }
 
 export interface SampleResponse extends ActionResponse {

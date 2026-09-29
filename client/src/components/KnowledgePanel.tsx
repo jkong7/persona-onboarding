@@ -29,7 +29,6 @@ export function KnowledgePanel({ snapshot, activity, headingId }: KnowledgePanel
         <h2 id={headingId} className="panel__title">
           What Persona knows
         </h2>
-        <p className="panel__sub">Saved on the server the moment it is heard. A hangup or refresh loses nothing.</p>
       </header>
 
       <dl className="facts" aria-label="Saved details">

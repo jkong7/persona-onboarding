@@ -5,6 +5,9 @@ import type {
   ClientCallEndReason,
   DeclineResponse,
   DoneEvent,
+  ExchangeResponse,
+  GmailConfig,
+  OutcomeResponse,
   OpenResponse,
   SampleResponse,
   Snapshot,
@@ -82,6 +85,33 @@ export async function declineCall(id: string): Promise<DeclineResponse> {
 
 export async function requestSampleInbox(id: string): Promise<SampleResponse> {
   return postJson<SampleResponse>(`${base(id)}/gmail/sample`);
+}
+
+export async function fetchGmailConfig(): Promise<GmailConfig> {
+  const response = await fetch('/api/gmail/config');
+  if (!response.ok) {
+    throw await failure(response);
+  }
+  return (await response.json()) as GmailConfig;
+}
+
+export async function exchangeGmailCode(id: string, code: string): Promise<ExchangeResponse> {
+  const response = await fetch(`${base(id)}/gmail/exchange`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-requested-with': 'XmlHttpRequest' },
+    body: JSON.stringify({ code }),
+  });
+  if (!response.ok) {
+    throw await failure(response);
+  }
+  return (await response.json()) as ExchangeResponse;
+}
+
+export async function reportGmailOutcome(
+  id: string,
+  outcome: 'popup_closed' | 'popup_blocked' | 'access_denied',
+): Promise<OutcomeResponse> {
+  return postJson<OutcomeResponse>(`${base(id)}/gmail/outcome`, { outcome });
 }
 
 export async function startCall(id: string): Promise<CallStartResponse> {

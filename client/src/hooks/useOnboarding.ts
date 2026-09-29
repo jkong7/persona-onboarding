@@ -3,12 +3,16 @@ import {
   ApiError,
   createOnboarding,
   eventsUrl,
+  exchangeGmailCode,
+  fetchGmailConfig,
   fetchSnapshot,
   openThread,
+  reportGmailOutcome,
   requestSampleInbox,
   sendMessage,
 } from '../api/client.ts';
-import type { Reply, Snapshot } from '../api/types.ts';
+import { loadGoogleIdentity, requestGmailCode } from '../gmail/google.ts';
+import type { GmailConfig, Reply, Snapshot } from '../api/types.ts';
 import { appendActivity, isActivityFeed, type ActivityItem } from '../lib/activity.ts';
 import {
   activityKey,
@@ -60,6 +64,8 @@ export interface OnboardingControls extends OnboardingState {
   notify: (text: string) => void;
   dismissNotice: (id: number) => void;
   chooseSampleInbox: () => Promise<Reply | null>;
+  connectGmail: () => Promise<Reply | null>;
+  gmailAvailable: boolean;
   startOver: () => Promise<void>;
   reload: () => void;
 }
@@ -497,6 +503,48 @@ export function useOnboarding(): OnboardingControls {
     }
   }, [applySnapshot, notify, refresh]);
 
+  const [gmail, setGmail] = useState<GmailConfig | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchGmailConfig()
+      .then((config) => {
+        if (!cancelled) {
+          setGmail(config);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const connectGmail = useCallback(async (): Promise<Reply | null> => {
+    const id = idRef.current;
+    if (id === null || gmail === null || !gmail.enabled || gmail.clientId === null) {
+      return null;
+    }
+    let result;
+    try {
+      const identity = await loadGoogleIdentity();
+      result = await requestGmailCode(identity, gmail.clientId, gmail.scope);
+    } catch {
+      notify('Google sign-in could not be loaded. The sample inbox works without it.');
+      return null;
+    }
+    try {
+      const response = result.ok
+        ? await exchangeGmailCode(id, result.code)
+        : await reportGmailOutcome(id, result.outcome);
+      applySnapshot(response.snapshot);
+      return response.reply;
+    } catch {
+      notify('Gmail could not be connected just now. The sample inbox works without it.');
+      refresh();
+      return null;
+    }
+  }, [applySnapshot, gmail, notify, refresh]);
+
   const startOver = useCallback(async () => {
     const previous = idRef.current;
     try {
@@ -539,6 +587,8 @@ export function useOnboarding(): OnboardingControls {
     notify,
     dismissNotice,
     chooseSampleInbox,
+    connectGmail,
+    gmailAvailable: gmail !== null && gmail.enabled && gmail.clientId !== null,
     startOver,
     reload,
   };

@@ -75,6 +75,13 @@ export function App(): ReactElement {
     }
   }, [call, onboarding]);
 
+  const connectGmail = useCallback(async () => {
+    const reply = await onboarding.connectGmail();
+    if (reply !== null && reply.spoken === true && call.active) {
+      call.speak(reply.text);
+    }
+  }, [call, onboarding]);
+
   const startOver = useCallback(async () => {
     if (call.active) {
       call.hangUp();
@@ -178,6 +185,8 @@ export function App(): ReactElement {
               onDismiss={onboarding.dismiss}
               onDismissNotice={onboarding.dismissNotice}
               onSample={chooseSample}
+              onConnect={connectGmail}
+              gmailAvailable={onboarding.gmailAvailable}
             />
           )}
 

@@ -2,23 +2,25 @@ import { useState, type ReactElement } from 'react';
 import { MailIcon } from './Icons.tsx';
 
 export interface GmailCardProps {
+  gmailAvailable: boolean;
+  onConnect: () => Promise<void>;
   onSample: () => Promise<void>;
 }
 
-export function GmailCard({ onSample }: GmailCardProps): ReactElement {
-  const [working, setWorking] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
+type Working = 'connect' | 'sample' | null;
 
-  const chooseSample = async (): Promise<void> => {
-    if (working) {
+export function GmailCard({ gmailAvailable, onConnect, onSample }: GmailCardProps): ReactElement {
+  const [working, setWorking] = useState<Working>(null);
+
+  const run = async (kind: Exclude<Working, null>, action: () => Promise<void>): Promise<void> => {
+    if (working !== null) {
       return;
     }
-    setWorking(true);
-    setNote(null);
+    setWorking(kind);
     try {
-      await onSample();
+      await action();
     } finally {
-      setWorking(false);
+      setWorking(null);
     }
   };
 
@@ -30,30 +32,35 @@ export function GmailCard({ onSample }: GmailCardProps): ReactElement {
         </span>
         <div>
           <h3 id="gmail-card-title" className="card__title">
-            Connect your inbox
+            {gmailAvailable ? 'Connect your inbox' : 'Try it with a sample inbox'}
           </h3>
           <p className="card__text">
-            Read only. Nothing is sent, deleted or changed. Google shows a caution screen because this is a demo app.
+            {gmailAvailable
+              ? 'Read only'
+              : 'The sample inbox is a set of made-up emails. Your own mail is not touched.'}
           </p>
         </div>
       </div>
       <div className="card__actions">
+        {gmailAvailable ? (
+          <button
+            type="button"
+            className="button button--primary"
+            disabled={working !== null}
+            onClick={() => void run('connect', onConnect)}
+          >
+            {working === 'connect' ? 'Waiting for Google...' : 'Connect Gmail'}
+          </button>
+        ) : null}
         <button
           type="button"
-          className="button button--primary"
-          onClick={() => setNote('The Google connection arrives in a later step. The sample inbox works today.')}
+          className={gmailAvailable ? 'button' : 'button button--primary'}
+          disabled={working !== null}
+          onClick={() => void run('sample', onSample)}
         >
-          Connect Gmail
-        </button>
-        <button type="button" className="button" disabled={working} onClick={() => void chooseSample()}>
-          {working ? 'Switching...' : 'Use sample inbox'}
+          {working === 'sample' ? 'Switching...' : 'Use sample inbox'}
         </button>
       </div>
-      {note === null ? null : (
-        <p className="card__note" role="status">
-          {note}
-        </p>
-      )}
     </section>
   );
 }

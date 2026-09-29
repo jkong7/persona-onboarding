@@ -114,6 +114,7 @@ export function snapshot(options: SnapshotOptions = {}): Snapshot {
       gmailMode: gmail.mode,
       ringing: calls.ringing,
       activeCallId: options.activeCallId ?? null,
+      hangupRequested: false,
       mayOfferCall: calls.mayOfferCall,
     },
     lastSeq: options.lastSeq ?? transcript.at(-1)?.seq ?? 0,

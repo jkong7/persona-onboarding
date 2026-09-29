@@ -230,7 +230,6 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  scroll-behavior: smooth;
 }
 
 .thread:focus-visible {

@@ -23,6 +23,8 @@ export interface ThreadProps {
   onDismiss: (localId: string) => void;
   onDismissNotice: (id: number) => void;
   onSample: () => Promise<void>;
+  onConnect: () => Promise<void>;
+  gmailAvailable: boolean;
 }
 
 function Typing({ agentName }: { agentName: string }): ReactElement {
@@ -66,6 +68,7 @@ export function Thread(props: ThreadProps): ReactElement {
   const { snapshot, pending, opening, notices, agentName, inCall } = props;
   const scroller = useRef<HTMLDivElement | null>(null);
   const pinned = useRef(true);
+  const following = useRef(false);
 
   const items = useMemo(
     () => buildThread(snapshot.transcript, snapshot.interface.activeCallId),
@@ -97,6 +100,10 @@ export function Thread(props: ThreadProps): ReactElement {
       return;
     }
     const onScroll = (): void => {
+      if (following.current) {
+        following.current = false;
+        return;
+      }
       pinned.current = element.scrollHeight - element.scrollTop - element.clientHeight < 96;
     };
     element.addEventListener('scroll', onScroll, { passive: true });
@@ -110,7 +117,8 @@ export function Thread(props: ThreadProps): ReactElement {
     if (element === null || !pinned.current) {
       return;
     }
-    element.scrollTop = element.scrollHeight;
+    following.current = true;
+    element.scrollTo({ top: element.scrollHeight, behavior: 'instant' });
   }, [items.length, snapshot.lastSeq, waiting.length, streamedLength, showTyping, showGmail, notices.length, inCall]);
 
   return (
@@ -160,7 +168,9 @@ export function Thread(props: ThreadProps): ReactElement {
         })}
         {showTyping ? <Typing agentName={agentName} /> : null}
       </ol>
-      {showGmail ? <GmailCard onSample={props.onSample} /> : null}
+      {showGmail ? (
+        <GmailCard gmailAvailable={props.gmailAvailable} onConnect={props.onConnect} onSample={props.onSample} />
+      ) : null}
       {notices.map((notice) => (
         <div key={notice.id} className="notice" role="status">
           <p>{notice.text}</p>

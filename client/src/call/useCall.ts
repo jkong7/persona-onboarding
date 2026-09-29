@@ -259,6 +259,13 @@ export function useCall(options: UseCallOptions): CallControls {
           session.tracker.markAudioDone();
           return;
         }
+        case 'Error': {
+          if (session.reporter.report('network_drop')) {
+            latest.current.notify(session.wasLive ? CALL_DROPPED : CALL_FAILED);
+          }
+          teardown(session);
+          return;
+        }
         case 'InjectionRefused': {
           if (session.speech.length > 0 && session.speechTimer === null) {
             session.speechTimer = setTimeout(() => {
@@ -272,7 +279,7 @@ export function useCall(options: UseCallOptions): CallControls {
           return;
       }
     },
-    [addCaption, flushSpeech],
+    [addCaption, flushSpeech, teardown],
   );
 
   const startMeter = useCallback(
@@ -543,6 +550,7 @@ export function useCall(options: UseCallOptions): CallControls {
   );
 
   const activeCallId = options.snapshot?.interface.activeCallId ?? null;
+  const hangupRequested = options.snapshot?.interface.hangupRequested === true;
 
   useEffect(() => {
     const session = sessionRef.current;
@@ -551,24 +559,28 @@ export function useCall(options: UseCallOptions): CallControls {
     }
     if (activeCallId === session.callId) {
       session.seenActive = true;
+    }
+    if (!session.seenActive || session.reporter.done) {
       return;
     }
-    if (!session.seenActive || session.reporter.done || session.wrapTimer !== null) {
-      return;
-    }
-    if (activeCallId !== null) {
-      session.reporter.report('network_drop');
+    if (activeCallId !== session.callId) {
+      session.reporter.report(activeCallId === null ? 'agent_ended' : 'network_drop');
       teardown(session);
       return;
     }
-    const started = Date.now();
-    try {
-      session.mic?.stop();
-    } catch {
-      session.mic = null;
+    if (!hangupRequested) {
+      if (session.wrapTimer !== null) {
+        clearInterval(session.wrapTimer);
+        session.wrapTimer = null;
+        patch({ phase: 'live' });
+      }
+      return;
     }
-    session.mic = null;
-    patch({ phase: 'wrapping_up', muted: true });
+    if (session.wrapTimer !== null) {
+      return;
+    }
+    const started = Date.now();
+    patch({ phase: 'wrapping_up' });
     session.wrapTimer = setInterval(() => {
       if (session.closed) {
         return;
@@ -581,7 +593,7 @@ export function useCall(options: UseCallOptions): CallControls {
       session.reporter.report('agent_ended');
       teardown(session);
     }, 200);
-  }, [activeCallId, patch, teardown, view.phase]);
+  }, [activeCallId, hangupRequested, patch, teardown, view.phase]);
 
   useEffect(() => {
     const onPageHide = (): void => {
