@@ -1,0 +1,190 @@
+[
+  {
+    "id": "task_first",
+    "title": "Someone who opens with a real task and wants to skip setup",
+    "run": 1,
+    "lines": [
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Hi, I'm your new assistant. I read your email, tell you what matters, and draft the replies you keep putting off.\n\nWhat would you like to call me? Persona is fine if nothing comes to mind."
+      },
+      {
+        "who": "user",
+        "channel": "text",
+        "text": "my streambox subscription renews in a few days and i never use it, can you deal with that"
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Sorry, I lost my thread for a second. Mind sending that again?"
+      }
+    ],
+    "findings": [],
+    "verdict": null,
+    "passed": false,
+    "agentTurns": 0,
+    "firstWordsMs": [],
+    "costUsd": 0,
+    "usage": {},
+    "tools": [],
+    "error": "Error: 400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CfWUMAr21QFXwVWa2qzVo\"}"
+  },
+  {
+    "id": "returns_hours_later",
+    "title": "The tab closes mid-call and the person returns hours later",
+    "run": 1,
+    "lines": [
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Hi, I'm your new assistant. I read your email, tell you what matters, and draft the replies you keep putting off.\n\nWhat would you like to call me? Persona is fine if nothing comes to mind."
+      }
+    ],
+    "findings": [],
+    "verdict": null,
+    "passed": false,
+    "agentTurns": 0,
+    "firstWordsMs": [],
+    "costUsd": 0,
+    "usage": {},
+    "tools": [],
+    "error": "Error: 400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CfWUM957VRLWf7MPH1hTt\"}"
+  },
+  {
+    "id": "rambler",
+    "title": "Someone who rambles and wanders off topic",
+    "run": 1,
+    "lines": [
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Hi there. I'm your assistant for email and the small jobs that pile up.\n\nWhat should I go by? Name me anything you like, or just keep Persona."
+      }
+    ],
+    "findings": [],
+    "verdict": null,
+    "passed": false,
+    "agentTurns": 0,
+    "firstWordsMs": [],
+    "costUsd": 0,
+    "usage": {},
+    "tools": [],
+    "error": "Error: 400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CfWUM98q5dR7xvV2h6Eaf\"}"
+  },
+  {
+    "id": "gmail_popup_closed",
+    "title": "The Google window is closed without connecting",
+    "run": 1,
+    "lines": [
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Hi there. I'm your assistant for email and the small jobs that pile up.\n\nWhat should I go by? Name me anything you like, or just keep Persona."
+      }
+    ],
+    "findings": [],
+    "verdict": null,
+    "passed": false,
+    "agentTurns": 0,
+    "firstWordsMs": [],
+    "costUsd": 0,
+    "usage": {},
+    "tools": [],
+    "error": "Error: 400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CfWUMAo3a8qsiU28weAkL\"}"
+  },
+  {
+    "id": "silence_on_call",
+    "title": "The person goes silent on a call",
+    "run": 1,
+    "lines": [
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Hi there. I'm your assistant for email and the small jobs that pile up.\n\nWhat should I go by? Name me anything you like, or just keep Persona."
+      }
+    ],
+    "findings": [],
+    "verdict": null,
+    "passed": false,
+    "agentTurns": 0,
+    "firstWordsMs": [],
+    "costUsd": 0,
+    "usage": {},
+    "tools": [],
+    "error": "Error: 400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CfWUMAq2eAsUNtAfPZBbm\"}"
+  },
+  {
+    "id": "typed_name_during_call",
+    "title": "A misheard name is corrected by typing",
+    "run": 1,
+    "lines": [
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Hi, I'm your new assistant. I read your email, tell you what matters, and draft the replies you keep putting off.\n\nWhat would you like to call me? Persona is fine if nothing comes to mind."
+      }
+    ],
+    "findings": [],
+    "verdict": null,
+    "passed": false,
+    "agentTurns": 0,
+    "firstWordsMs": [],
+    "costUsd": 0,
+    "usage": {},
+    "tools": [],
+    "error": "Error: 400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CfWUMBgsDLKHjxZA8PcUC\"}"
+  },
+  {
+    "id": "another_language",
+    "title": "Someone who writes in Spanish",
+    "run": 1,
+    "lines": [
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Hi, I'm your new assistant. I read your email, tell you what matters, and draft the replies you keep putting off.\n\nWhat would you like to call me? Persona is fine if nothing comes to mind."
+      },
+      {
+        "who": "user",
+        "channel": "text",
+        "text": "hola, no hablo mucho inglés"
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Sorry, I lost my thread for a second. Mind sending that again?"
+      }
+    ],
+    "findings": [],
+    "verdict": null,
+    "passed": false,
+    "agentTurns": 0,
+    "firstWordsMs": [],
+    "costUsd": 0,
+    "usage": {},
+    "tools": [],
+    "error": "Error: 400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CfWUMCcBmHNxpyuR4JZF1\"}"
+  },
+  {
+    "id": "changes_mind",
+    "title": "Someone who changes their mind about what they want",
+    "run": 1,
+    "lines": [
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Hey, good to meet you. I'm the assistant you can text or call to get email and life admin off your plate.\n\nWhat do you want to call me? Persona works if you'd rather not pick."
+      }
+    ],
+    "findings": [],
+    "verdict": null,
+    "passed": false,
+    "agentTurns": 0,
+    "firstWordsMs": [],
+    "costUsd": 0,
+    "usage": {},
+    "tools": [],
+    "error": "Error: 400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CfWUMBirMGLEDYT6oZLht\"}"
+  }
+]

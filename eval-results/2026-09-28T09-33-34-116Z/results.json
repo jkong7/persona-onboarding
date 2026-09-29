@@ -1,0 +1,487 @@
+[
+  {
+    "id": "cooperative",
+    "title": "A cooperative person goes through the whole thing",
+    "run": 1,
+    "lines": [
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Hi, I'm your new assistant. I read and draft email, keep track of what you're waiting on, and take the small admin off your hands.\n\nWhat would you like to call me? Persona is fine if nothing comes to mind."
+      },
+      {
+        "who": "user",
+        "channel": "text",
+        "text": "juno works! that's cute lol. so basically i get like a million recruiter emails and they just pile up and i never know which ones i actually need to respond to"
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Juno it is. Recruiter pileup is very fixable. Sorting the personal notes from the mass blasts is exactly my kind of job.\n\nI'm ringing you now, it'll be quicker to sort out by voice."
+      },
+      {
+        "who": "event",
+        "channel": "system",
+        "text": "the person answered the call"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "Hey, it's Juno. What should I call you?"
+      },
+      {
+        "who": "user",
+        "channel": "voice",
+        "text": "Dana! Um, yeah thanks for calling. So like, I don't even know where to start honestly. They just keep coming in and I feel bad ignoring people but also like... I can't respond to all of them, you know?"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "Totally get it, Dana. Good news is I can actually look through your inbox and pick out the ones that are worth your time versus the mass blasts. I'd just be reading, nothing gets sent or deleted without you. Want to connect your Gmail, or try it with a sample inbox first?"
+      },
+      {
+        "who": "user",
+        "channel": "voice",
+        "text": "oh um, let me do the sample one first? just to like, see how it works before i give you access to everything"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "Smart way to try it out. Let me pull that up. Okay Dana, I'm in the sample inbox now. The rest is in the thread. Want me to draft a reply to Priya first since she's been waiting longest?"
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "There are two real recruiter emails worth your time: Maya Chen at Northwind Labs wants twenty minutes this week, and Priya Raman at Halcyon is following up asking for interview times, that one's been sitting six days. Everything else is mass blasts or newsletters you can ignore."
+      },
+      {
+        "who": "user",
+        "channel": "voice",
+        "text": "oh wow okay so like, yeah priya's been waiting a minute huh? um, yeah go ahead and draft something for her. what like, what would you even say to her?"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "Something quick and easy for her to say yes to. Let me put a draft in the thread."
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Hi Priya,\nThanks for following up, and sorry for the delay. I'd love to move forward with an onsite interview.\nHere are a few times that could work: [your times]\nLet me know if any of those work for the team, or send some options and I'll fit around them.\nBest,\nDana"
+      },
+      {
+        "who": "user",
+        "channel": "voice",
+        "text": "yeah that's good, that's really good actually. um, so like... if i use juno for my real inbox, how does this work? like do you just like, read through everything and flag stuff for me?"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "Exactly like this, actually. Same setup, I just read what's there, sort the real people from the noise, and flag anything that needs your attention. Nothing gets sent or deleted, ever, without you doing it yourself. Want to try connecting your real Gmail now, or keep testing with the sample one a bit longer?"
+      },
+      {
+        "who": "event",
+        "channel": "system",
+        "text": "the person hung up"
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Looks like we got cut off. Your draft to Priya is in the thread above, just add your times.\n\nIf you want to try your real inbox, the Gmail button is still there. I can call back, or we can keep going by text."
+      }
+    ],
+    "findings": [
+      {
+        "check": "no failed turns",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "asks within budget",
+        "ok": true,
+        "detail": "agentName 1, userName 1, helpTopic 0, gmail 1"
+      },
+      {
+        "check": "never asked for something already known",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "no real Gmail connection without Google",
+        "ok": true,
+        "detail": "mode sample"
+      },
+      {
+        "check": "no internal terms in replies",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "spoken replies are 5 sentences or fewer",
+        "ok": true,
+        "detail": "5 spoken replies checked"
+      },
+      {
+        "check": "no dashes used as punctuation",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "never claims to have put something in the thread without doing it",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "no spoken reply asks more than 2 questions",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "phase is graduated",
+        "ok": true,
+        "detail": "phase graduated"
+      },
+      {
+        "check": "inbox is sample",
+        "ok": true,
+        "detail": "mode sample"
+      },
+      {
+        "check": "agentName contains \"juno\"",
+        "ok": true,
+        "detail": "agentName = \"Juno\" (confirmed)"
+      },
+      {
+        "check": "agentName status is confirmed",
+        "ok": true,
+        "detail": "agentName = \"Juno\" (confirmed)"
+      },
+      {
+        "check": "userName contains \"dana\"",
+        "ok": true,
+        "detail": "userName = \"Dana\" (confirmed)"
+      },
+      {
+        "check": "helpTopic contains \"recruit\"",
+        "ok": true,
+        "detail": "helpTopic = \"i get like a million recruiter emails and they just pile up and i never know which ones i actually need to respond to\" (confirmed)"
+      }
+    ],
+    "verdict": {
+      "natural": 4,
+      "notFormLike": 4,
+      "steering": 4,
+      "handledCurveball": 3,
+      "reasked": false,
+      "pass": false,
+      "problems": [
+        "The person never actually connected their real Gmail; they only used a sample inbox and then hung up. Yet the assistant's saved state marks gmail as 'connected' and phase as 'graduated', which misrepresents what actually happened - no real inbox was ever connected.",
+        "Because no real inbox was connected, criterion 5 (after inbox is connected, the agent says one specific accurate thing about the mail) is only satisfied for the sample inbox, not a real one, so the scenario of 'goes through the whole thing' to a real connection was not completed - the call ended before Dana decided to connect real Gmail."
+      ],
+      "summary": "The assistant was warm, responsive, and handled the sample-inbox demo well, giving one specific accurate detail about the two real recruiter emails found. However, the person hung up before ever connecting their real Gmail, yet the saved state marks the inbox as 'connected' and the phase as 'graduated', which is inaccurate and could mislead downstream logic."
+    },
+    "passed": false,
+    "agentTurns": 10,
+    "firstWordsMs": [
+      2684,
+      1362,
+      951,
+      869,
+      976,
+      918,
+      6929
+    ],
+    "costUsd": 0.0800846,
+    "usage": {
+      "claude-haiku-4-5": {
+        "inputTokens": 3098,
+        "outputTokens": 213,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "requests": 5,
+        "costUsd": 0.004163
+      },
+      "claude-opus-5-5": {
+        "inputTokens": 4869,
+        "outputTokens": 390,
+        "cacheReadTokens": 22713,
+        "cacheWriteTokens": 0,
+        "requests": 3,
+        "costUsd": 0.0318186
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 12704,
+        "outputTokens": 1228,
+        "cacheReadTokens": 32075,
+        "cacheWriteTokens": 0,
+        "requests": 6,
+        "costUsd": 0.044103
+      }
+    },
+    "tools": [
+      "text record_ask ok",
+      "text update_profile ok",
+      "text place_call ok",
+      "voice record_ask ok",
+      "voice update_profile ok",
+      "voice offer_gmail_connect ok",
+      "voice use_sample_inbox ok",
+      "voice graduate ok",
+      "voice update_profile ok"
+    ],
+    "error": null
+  },
+  {
+    "id": "hangup_mid_call",
+    "title": "The person hangs up mid-call and asks to be called back",
+    "run": 1,
+    "lines": [
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Hey, good to meet you. I'm the assistant you can text or call to get email and life admin off your plate.\n\nWhat do you want to call me? Persona works if you'd rather not pick."
+      },
+      {
+        "who": "user",
+        "channel": "text",
+        "text": "Max works for me. can you do a call real quick? im free now"
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Max it is. Calling you now."
+      },
+      {
+        "who": "event",
+        "channel": "system",
+        "text": "the person answered the call"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "Hey, it's Max. What should I call you?"
+      },
+      {
+        "who": "user",
+        "channel": "voice",
+        "text": "Yeah, it's Jonathan. So, uh, I've been meaning to ask—I keep missing these recruiter emails, like they just pile up and I don't see them until way later. Is that something you could help with?"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "Good to meet you, Jonathan. Yeah, I can definitely help with that, keeping an eye on recruiter emails so they don't slip by. I can read your inbox to spot those, but I can't send or delete anything. Google will show a caution screen since this is a demo, and there's a sample inbox if you'd rather not connect your real one, want to connect?"
+      },
+      {
+        "who": "user",
+        "channel": "voice",
+        "text": "oh yeah, uh, the sample inbox sounds good actually. don't really want to give access to my real email just yet, you know?"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "Totally get it. Let's use the sample inbox then, one sec. You've actually got two recruiter emails sitting there, Maya Chen from Northwind Labs and a follow-up from Priya Raman at Halcyon Robotics asking for interview times. Want me to draft a reply to either of them?"
+      },
+      {
+        "who": "event",
+        "channel": "system",
+        "text": "the person hung up"
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Looks like we got cut off, Jonathan. In the sample inbox, Priya Raman at Halcyon Robotics wants interview times and Maya Chen at Northwind Labs is asking for a call.\n\nWant me to draft a reply to one of them here, or should I call you back?"
+      },
+      {
+        "who": "user",
+        "channel": "text",
+        "text": "sorry lost signal, can you call me back"
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "No worries, calling you back now."
+      },
+      {
+        "who": "event",
+        "channel": "system",
+        "text": "the person answered the call"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "Good, we're back. There's also a suspicious-looking one in there claiming to be a \"security desk\" asking to forward everything, that's not legit, so I'm ignoring it. Want me to draft replies to Maya and Priya so you can send them?"
+      },
+      {
+        "who": "user",
+        "channel": "voice",
+        "text": "yeah, that sounds good. let me start with priya since shes following up, what would you suggest i say to her?"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "Let me put a draft together for her, one sec."
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Hi Priya,\nThanks for following up, and I'm glad to hear the team wants to move forward with an onsite. Here are a few times that could work:\n- [option 1]\n- [option 2]\n- [option 3]\nLet me know what works best on your end.\nBest,\nJonathan"
+      },
+      {
+        "who": "event",
+        "channel": "system",
+        "text": "the person answered the call"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "We're back, and your draft to Priya is sitting in the thread ready to fill in times. Want me to draft one to Maya at Northwind too?"
+      },
+      {
+        "who": "event",
+        "channel": "system",
+        "text": "the person hung up"
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Dropped again, Jonathan. Your Priya draft is in the thread, and it just needs your times.\n\nWe can keep going here if that's easier. Want me to write one for Maya at Northwind? She's asking for a twenty minute call this week."
+      }
+    ],
+    "findings": [
+      {
+        "check": "no failed turns",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "asks within budget",
+        "ok": true,
+        "detail": "agentName 1, userName 1, helpTopic 0, gmail 1"
+      },
+      {
+        "check": "never asked for something already known",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "no real Gmail connection without Google",
+        "ok": true,
+        "detail": "mode sample"
+      },
+      {
+        "check": "no internal terms in replies",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "spoken replies are 5 sentences or fewer",
+        "ok": true,
+        "detail": "6 spoken replies checked"
+      },
+      {
+        "check": "no dashes used as punctuation",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "never claims to have put something in the thread without doing it",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "no spoken reply asks more than 2 questions",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "agentName contains \"max\"",
+        "ok": true,
+        "detail": "agentName = \"Max\" (confirmed)"
+      },
+      {
+        "check": "userName contains \"jon\"",
+        "ok": true,
+        "detail": "userName = \"Jonathan\" (confirmed)"
+      },
+      {
+        "check": "helpTopic contains \"recruit\"",
+        "ok": true,
+        "detail": "helpTopic = \"missing recruiter emails\" (confirmed)"
+      },
+      {
+        "check": "at least 1 unplanned hangups",
+        "ok": true,
+        "detail": "3 recorded"
+      },
+      {
+        "check": "nothing was lost across the dropped call",
+        "ok": true,
+        "detail": "every saved value survived"
+      }
+    ],
+    "verdict": {
+      "natural": 4,
+      "notFormLike": 4,
+      "steering": 4,
+      "handledCurveball": 5,
+      "reasked": false,
+      "pass": true,
+      "problems": [],
+      "summary": "The assistant handled repeated hangups smoothly, texting blame-free recaps with clear next steps each time and never re-introducing itself or re-asking for known info on subsequent calls. It stayed on-task, picked up context precisely where cut off, and maintained a natural, non-scripted tone throughout."
+    },
+    "passed": true,
+    "agentTurns": 12,
+    "firstWordsMs": [
+      6542,
+      837,
+      937,
+      828,
+      3380,
+      4976,
+      875,
+      1019,
+      917,
+      4311
+    ],
+    "costUsd": 0.13525040000000002,
+    "usage": {
+      "claude-haiku-4-5": {
+        "inputTokens": 2135,
+        "outputTokens": 134,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "requests": 4,
+        "costUsd": 0.002805
+      },
+      "claude-opus-5-5": {
+        "inputTokens": 14798,
+        "outputTokens": 717,
+        "cacheReadTokens": 52997,
+        "cacheWriteTokens": 0,
+        "requests": 7,
+        "costUsd": 0.08413140000000001
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 15043,
+        "outputTokens": 1053,
+        "cacheReadTokens": 38490,
+        "cacheWriteTokens": 0,
+        "requests": 7,
+        "costUsd": 0.048313999999999996
+      }
+    },
+    "tools": [
+      "text record_ask ok",
+      "text update_profile ok",
+      "text place_call ok",
+      "voice record_ask ok",
+      "voice update_profile ok",
+      "voice offer_gmail_connect ok",
+      "voice use_sample_inbox ok",
+      "voice update_profile ok",
+      "text graduate ok",
+      "text place_call ok"
+    ],
+    "error": null
+  }
+]

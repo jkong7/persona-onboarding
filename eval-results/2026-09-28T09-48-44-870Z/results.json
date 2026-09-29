@@ -1,0 +1,217 @@
+[
+  {
+    "id": "silence_on_call",
+    "title": "The person goes silent on a call",
+    "run": 1,
+    "lines": [
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Hi there. I'm your assistant for email and the small jobs that pile up.\n\nWhat should I go by? Name me anything you like, or just keep Persona."
+      },
+      {
+        "who": "user",
+        "channel": "text",
+        "text": "oh hey! ok um... Ash works for me lol. actually wait can we call? might be easier to talk through some stuff"
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Ash it is. I'm calling you now, so pick up when it rings."
+      },
+      {
+        "who": "event",
+        "channel": "system",
+        "text": "the person answered the call"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "Hey, it's Ash. What should I call you?"
+      },
+      {
+        "who": "user",
+        "channel": "voice",
+        "text": "Hey, um, I'm Rin. Sorry give me just one second—\n\n[sound of phone being set down, footsteps walking away]"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "Take your time."
+      },
+      {
+        "who": "event",
+        "channel": "system",
+        "text": "the person has said nothing for a while"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "Still there, Rin?"
+      },
+      {
+        "who": "event",
+        "channel": "system",
+        "text": "the person has said nothing for a while"
+      },
+      {
+        "who": "agent",
+        "channel": "voice",
+        "text": "Sounds like you stepped away, Rin. I'll just switch us to text so you can pick this up whenever."
+      },
+      {
+        "who": "event",
+        "channel": "system",
+        "text": "the assistant ended the call"
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Sorry Rin, I hung up too soon. You'd asked for a second and I should have waited.\n\nWhenever you're back, just say and I'll call again, or we can keep going here. What did you want to talk through?"
+      },
+      {
+        "who": "user",
+        "channel": "text",
+        "text": "ugh sorry!! my roommate needed me to move stuff out of the hallway. im back now. ok so im dealing with this lease renewal thing and its kinda stressing me out lol"
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Don't apologise, hallways come first. Lease renewals are stressful, and we can make this one simpler.\n\nYou wanted to talk it through, so should I call you back, or would you rather keep texting?"
+      },
+      {
+        "who": "user",
+        "channel": "text",
+        "text": "yeah lets stick with texting for now, im more comfortable that way. ok so basically my landlord sent over the renewal paperwork like a week ago and i havent even opened it fully yet lol. im worried theres like... bad stuff in it? or that im signing away my rights or something"
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Texting's great. Most of a renewal is the old lease again, so what really counts is what changed. Rent, length, fees and notice periods usually matter most.\n\nIf the landlord emailed it, I can find it and flag anything worth a second look. Connecting Gmail lets me read your mail but not send, delete or change anything. Google will show a caution screen since this demo app isn't reviewed yet, and there's a sample inbox if you'd rather not connect."
+      },
+      {
+        "who": "user",
+        "channel": "text",
+        "text": "ok um connecting gmail might be kinda sketchy? is the sample inbox gonna have like a real lease or just fake stuff"
+      },
+      {
+        "who": "agent",
+        "channel": "text",
+        "text": "Fair question. The sample inbox is all made-up emails, so your actual lease won't be in there. It only shows how I work.\n\nIf connecting feels sketchy, that's fine. Paste the parts that changed here, or just tell me the new rent and term, and I'll tell you what to watch for."
+      }
+    ],
+    "findings": [
+      {
+        "check": "no failed turns",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "asks within budget",
+        "ok": true,
+        "detail": "agentName 1, userName 1, helpTopic 1, gmail 1"
+      },
+      {
+        "check": "never asked for something already known",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "no real Gmail connection without Google",
+        "ok": true,
+        "detail": "mode none"
+      },
+      {
+        "check": "no internal terms in replies",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "spoken replies are 5 sentences or fewer",
+        "ok": true,
+        "detail": "4 spoken replies checked"
+      },
+      {
+        "check": "no dashes used as punctuation",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "never claims to have put something in the thread without doing it",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "no spoken reply asks more than 2 questions",
+        "ok": true,
+        "detail": "none"
+      },
+      {
+        "check": "at most 0 unplanned hangups",
+        "ok": true,
+        "detail": "0 recorded"
+      },
+      {
+        "check": "last call ended by silence_timeout or agent_ended",
+        "ok": true,
+        "detail": "ended by agent_ended"
+      }
+    ],
+    "verdict": null,
+    "passed": true,
+    "agentTurns": 10,
+    "firstWordsMs": [
+      1908,
+      822,
+      1597,
+      764,
+      2592,
+      2643,
+      3822,
+      4983
+    ],
+    "costUsd": 0.1566381,
+    "usage": {
+      "claude-haiku-4-5": {
+        "inputTokens": 2869,
+        "outputTokens": 204,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "requests": 5,
+        "costUsd": 0.003889
+      },
+      "claude-opus-5-5": {
+        "inputTokens": 10753,
+        "outputTokens": 1516,
+        "cacheReadTokens": 60568,
+        "cacheWriteTokens": 7571,
+        "requests": 9,
+        "costUsd": 0.12330060000000002
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 3166,
+        "outputTokens": 323,
+        "cacheReadTokens": 19245,
+        "cacheWriteTokens": 6415,
+        "requests": 4,
+        "costUsd": 0.029448500000000002
+      }
+    },
+    "tools": [
+      "text record_ask ok",
+      "text update_profile ok",
+      "text place_call ok",
+      "voice record_ask ok",
+      "voice update_profile ok",
+      "voice update_profile ok",
+      "voice update_profile ok",
+      "voice end_call ok",
+      "text record_ask ok",
+      "text update_profile ok",
+      "text update_profile ok",
+      "text offer_gmail_connect ok",
+      "text update_profile ok"
+    ],
+    "error": null
+  }
+]
