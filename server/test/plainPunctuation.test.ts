@@ -75,3 +75,56 @@ describe('plain punctuation while streaming', () => {
     expect(parts.join('')).toBe('Hey, it is Max.');
   });
 });
+
+describe('stray markup', () => {
+  const wrapped = "<result>\nMax it is. I'm calling you now.\n</result>";
+
+  it('is removed from a finished reply', () => {
+    expect(plainPunctuation(wrapped).trim()).toBe("Max it is. I'm calling you now.");
+    expect(plainPunctuation('<reply>Hi</reply> there <br/>').trim()).toBe('Hi there');
+  });
+
+  it('is removed however the reply is split up', () => {
+    for (const size of [1, 2, 3, 5, 8, 13, 50]) {
+      expect(stream(wrapped, size).trim()).toBe("Max it is. I'm calling you now.");
+    }
+  });
+
+  it('leaves ordinary comparisons alone', () => {
+    for (const size of [1, 4, 50]) {
+      expect(stream('Anything < 5 dollars is fine, and 3 > 2.', size)).toBe(
+        'Anything < 5 dollars is fine, and 3 > 2.',
+      );
+    }
+  });
+});
+
+describe('leaked reasoning', () => {
+  const leaked =
+    "<reasoning>Should have stated calling in reply; now write.</reasoning>Max it is. I'm calling you now.";
+
+  it('is removed along with everything inside it', () => {
+    expect(plainPunctuation(leaked)).toBe("Max it is. I'm calling you now.");
+    expect(plainPunctuation('Sure.\n<thinking>\nhmm\nok\n</thinking>\nHere you go.')).toBe('Sure.\nHere you go.');
+  });
+
+  it('is removed however the reply is split up', () => {
+    for (const size of [1, 2, 3, 7, 20, 200]) {
+      expect(stream(leaked, size)).toBe("Max it is. I'm calling you now.");
+    }
+  });
+
+  it('never shows reasoning that was left unfinished', () => {
+    for (const size of [1, 5, 200]) {
+      expect(stream('On it. <reasoning>I should now call the tool and', size).trimEnd()).toBe('On it.');
+    }
+  });
+});
+
+describe('lists inside a draft', () => {
+  it('keeps a hyphen that starts a line', () => {
+    const draft = 'These times work:\n- [option 1]\n- [option 2]\nBest,\nNoor';
+    expect(plainPunctuation(draft)).toBe(draft);
+    expect(plainPunctuation('Tuesday - or Wednesday')).toBe('Tuesday, or Wednesday');
+  });
+});

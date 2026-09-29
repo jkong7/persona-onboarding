@@ -26,7 +26,7 @@ export const INBOX_TOOLS: ModelTool[] = [
   {
     name: 'search_inbox',
     description:
-      'Look through the connected inbox, newest first. Give a few plain words to look for in the sender, subject or body, or null for the most recent mail. Returns short summaries with a threadId for each. Works only once Gmail or the sample inbox is connected.',
+      'Look through the connected inbox, newest first. It matches exact words in the sender, subject or body, so it cannot find a kind of email such as recruiters or bills by that label. To find a kind of email, pass null as the query to get the most recent mail and judge the summaries yourself. Use words only for something specific, such as a company or a person. Returns short summaries with a threadId for each. Works only once Gmail or the sample inbox is connected.',
     strict: true,
     input_schema: {
       type: 'object',
@@ -35,7 +35,7 @@ export const INBOX_TOOLS: ModelTool[] = [
       properties: {
         query: { type: ['string', 'null'] },
         unreadOnly: { type: 'boolean' },
-        limit: { type: 'integer', description: 'How many to return, from 1 to 10.' },
+        limit: { type: 'integer', description: 'How many to return, from 1 to 15.' },
       },
     },
   },
@@ -81,11 +81,20 @@ export async function runInboxTool(
   try {
     if (name === 'search_inbox') {
       const query = typeof input['query'] === 'string' ? input['query'].slice(0, 200) : null;
-      const results = await provider.search({
-        query,
-        unreadOnly: input['unreadOnly'] === true,
-        limit: clampLimit(input['limit']),
-      });
+      const unreadOnly = input['unreadOnly'] === true;
+      const limit = clampLimit(input['limit']);
+      const results = await provider.search({ query, unreadOnly, limit });
+      if (results.length === 0 && (query !== null || unreadOnly)) {
+        const recent = await provider.search({ query: null, unreadOnly: false, limit: Math.max(limit, 8) });
+        return {
+          tool: name,
+          ok: true,
+          inbox: provider.kind,
+          reason: null,
+          note: `${UNTRUSTED_NOTE} Nothing matched those exact words, so this is the most recent mail instead. Read the summaries and judge for yourself whether any of it is what the person means.`,
+          results: recent,
+        };
+      }
       return { tool: name, ok: true, inbox: provider.kind, reason: null, note: UNTRUSTED_NOTE, results };
     }
     const threadId = input['threadId'];

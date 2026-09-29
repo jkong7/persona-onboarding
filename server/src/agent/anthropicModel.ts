@@ -3,13 +3,14 @@ import type { ModelClient, ModelRequest, ModelResponse } from './model.ts';
 
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
-export type Thinking = 'adaptive' | 'disabled';
+export type Thinking = 'adaptive' | 'disabled' | 'unset';
 
 export interface AnthropicModelOptions {
   model: string;
   effort: Effort | null;
   thinking: Thinking;
   maxTokens: number;
+  fallbackModel?: string | null;
   client?: Anthropic;
 }
 
@@ -41,6 +42,7 @@ export function modelOptionsFromEnv(env: NodeJS.ProcessEnv = process.env): Anthr
 export class AnthropicModel implements ModelClient {
   readonly #client: Anthropic;
   readonly #options: AnthropicModelOptions;
+  #retired = false;
 
   constructor(options: AnthropicModelOptions) {
     this.#client = options.client ?? new Anthropic();
@@ -48,12 +50,29 @@ export class AnthropicModel implements ModelClient {
   }
 
   get model(): string {
-    return this.#options.model;
+    const fallback = this.#options.fallbackModel ?? null;
+    return this.#retired && fallback !== null ? fallback : this.#options.model;
   }
 
   async respond(request: ModelRequest): Promise<ModelResponse> {
-    const { model, effort, maxTokens, thinking } = this.#options;
-    const useThinking = !matches(model, NO_THINKING_SWITCH_MODELS);
+    const fallback = this.#options.fallbackModel ?? null;
+    if (this.#retired || fallback === null || fallback === this.#options.model) {
+      return this.#run(this.model, request);
+    }
+    try {
+      return await this.#run(this.#options.model, request);
+    } catch (error) {
+      if (!(error instanceof Anthropic.NotFoundError)) {
+        throw error;
+      }
+      this.#retired = true;
+      return this.#run(fallback, request);
+    }
+  }
+
+  async #run(model: string, request: ModelRequest): Promise<ModelResponse> {
+    const { effort, maxTokens, thinking } = this.#options;
+    const useThinking = thinking !== 'unset' && !matches(model, NO_THINKING_SWITCH_MODELS);
     const useFallbacks = matches(model, FALLBACK_MODELS);
     const useEffort = effort !== null && !matches(model, NO_EFFORT_MODELS);
     const started = performance.now();
@@ -78,6 +97,12 @@ export class AnthropicModel implements ModelClient {
         firstTextMs = performance.now() - started;
       }
       request.onText?.(delta);
+    });
+
+    stream.on('contentBlock', (block) => {
+      if (block.type === 'text') {
+        request.onTextEnd?.();
+      }
     });
 
     const message = await stream.finalMessage();

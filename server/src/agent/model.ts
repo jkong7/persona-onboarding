@@ -20,6 +20,7 @@ export interface ModelRequest {
   tools: ModelTool[];
   signal?: AbortSignal;
   onText?: (delta: string) => void;
+  onTextEnd?: () => void;
 }
 
 export interface ModelResponse {

@@ -10,7 +10,7 @@ const SCHEMAS: Record<ToolName, ModelTool> = {
   update_profile: {
     name: 'update_profile',
     description:
-      'Record what the person just told you. Call it the moment you hear something usable, before anything else, because a call can drop at any second and only recorded values survive. One call can carry several updates in any order. Use op "set" for a new value or a correction, "confirm" once they agree with a name you read back, and "clear" when they take something back. The value is stored exactly as given, so pass their words and not your interpretation of them. This cannot set gmail: only Google can.',
+      'Record what the person just told you. Call it the moment you hear something usable, because a call can drop at any second and only recorded values survive. One call can carry several updates in any order. Always pass the value itself, in their words. Set confirmed to true when they typed it, or when they have just agreed that a name you read back is right, and pass that name again as the value. Set confirmed to false for something you heard on a call and have not checked yet. Pass null as the value to erase something they took back. This cannot set gmail: only Google can.',
     strict: true,
     input_schema: {
       type: 'object',
@@ -22,14 +22,14 @@ const SCHEMAS: Record<ToolName, ModelTool> = {
           items: {
             type: 'object',
             additionalProperties: false,
-            required: ['field', 'op', 'value'],
+            required: ['field', 'value', 'confirmed'],
             properties: {
               field: { type: 'string', enum: PROFILE_FIELDS },
-              op: { type: 'string', enum: ['set', 'confirm', 'clear'] },
               value: {
                 type: ['string', 'null'],
-                description: 'The value for "set". Null for "confirm" and "clear".',
+                description: 'What they said. Null erases the item.',
               },
+              confirmed: { type: 'boolean' },
             },
           },
         },
@@ -138,7 +138,7 @@ const SCHEMAS: Record<ToolName, ModelTool> = {
 export const SEND_TEXT_TOOL: ModelTool = {
   name: 'send_text',
   description:
-    'During a call, put a written message in the text thread. Use it for anything that is better read than heard: a draft reply, a list, an address, exact figures. Say aloud that you have put it in the thread. It only works while a call is in progress; in the thread itself, just write your reply.',
+    'During a call, put a written message in the text thread. Use it for anything that is better read than heard: a draft reply, a list, an address, exact figures. In a draft, leave a gap in square brackets for anything the person has not told you, such as [your times], and never invent it. Say aloud that you have put it in the thread. It only works while a call is in progress; in the thread itself, just write your reply.',
   strict: true,
   input_schema: {
     type: 'object',
