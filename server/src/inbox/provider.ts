@@ -1,7 +1,7 @@
 import { sampleThreads } from './sample.ts';
 import type { EmailThread, InboxProvider, SearchOptions, ThreadSummary } from './types.ts';
 
-export const SEARCH_LIMIT_MAX = 10;
+export const SEARCH_LIMIT_MAX = 15;
 export const SNIPPET_LENGTH = 160;
 export const BODY_LENGTH = 4000;
 
